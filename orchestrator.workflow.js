@@ -15,7 +15,10 @@ export const meta = {
 // are passed in via args.topology by the runner. The inline default keeps this
 // file self-contained for a quick standalone run; topology.json wins when given.
 // ---------------------------------------------------------------------------
-const TOPOLOGY = (args && args.topology) || {
+// Some runners deliver `args` as a JSON string rather than an object; normalise.
+const ARGS = (typeof args === 'string' ? JSON.parse(args) : args) || {}
+
+const TOPOLOGY = ARGS.topology || {
   chain: ['owner', 'interpreter', 'analyst', 'examiner', 'builder'],
   allowed: {
     'owner>interpreter': ['problem', 'clarification', 'roadmap-verdict', 'feedback', 'decision'],
@@ -44,7 +47,7 @@ function adjacent(a, b) {
 // topology + per-edge vocabulary for every message this run produces.
 // ---------------------------------------------------------------------------
 const ledger = []
-let seq = (args && args.seqStart) || 0
+let seq = ARGS.seqStart || 0
 
 function append({ from, to, type, body, refs = [], in_reply_to = null }) {
   if (!adjacent(from, to)) {
@@ -319,15 +322,15 @@ async function runBehaviour(b, maxRounds, tag) {
 // ---------------------------------------------------------------------------
 // ENTRY  --  one of two modes per run. The Owner gates between runs.
 // ---------------------------------------------------------------------------
-const mode = (args && args.mode) || 'roadmap'
+const mode = ARGS.mode || 'roadmap'
 
 if (mode === 'roadmap') {
   // -------- RUN TYPE A: produce a roadmap for the Owner to validate ---------
-  const problem = args && args.problem
+  const problem = ARGS.problem
   if (!problem) throw new Error('roadmap mode needs args.problem')
   phase('Roadmap')
-  const prior = args.priorRoadmap ? JSON.stringify(args.priorRoadmap, null, 2) : ''
-  const planned = await agent(PROMPTS.roadmap(problem, args.ownerFeedback, prior), {
+  const prior = ARGS.priorRoadmap ? JSON.stringify(ARGS.priorRoadmap, null, 2) : ''
+  const planned = await agent(PROMPTS.roadmap(problem, ARGS.ownerFeedback, prior), {
     label: 'interpreter:roadmap', phase: 'Roadmap', schema: S_ROADMAP,
   })
   const rendered = planned.iterations
@@ -339,12 +342,12 @@ if (mode === 'roadmap') {
 
 if (mode === 'iteration') {
   // -------- RUN TYPE B: deliver ONE potentially shippable increment ---------
-  const roadmap = args && args.roadmap
-  const k = (args && args.iterationIndex) || 0
+  const roadmap = ARGS.roadmap
+  const k = ARGS.iterationIndex || 0
   if (!roadmap || !roadmap.iterations || !roadmap.iterations[k]) {
     throw new Error('iteration mode needs args.roadmap and a valid args.iterationIndex')
   }
-  const maxRounds = (args && args.maxRounds) || 3
+  const maxRounds = ARGS.maxRounds || 3
   const it = roadmap.iterations[k]
   const tag = it.id || `I${k + 1}`
 
