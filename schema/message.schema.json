@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-working-model/message.schema.json",
+  "title": "Relay message envelope",
+  "description": "One line of ledger.jsonl. Every inter-agent message is exactly one of these. Topology and per-edge vocabulary are enforced by the orchestrator's append() chokepoint; this schema documents the wire format an auditor reads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seq", "from", "to", "type", "body"],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic, gap-free sequence number. Total order of the conversation."
+    },
+    "from": {
+      "type": "string",
+      "enum": ["owner", "interpreter", "analyst", "examiner", "builder"]
+    },
+    "to": {
+      "type": "string",
+      "enum": ["owner", "interpreter", "analyst", "examiner", "builder"]
+    },
+    "type": {
+      "type": "string",
+      "description": "Message kind. Legal values depend on the directed edge (from>to).",
+      "enum": [
+        "problem",
+        "clarification",
+        "roadmap",
+        "roadmap-verdict",
+        "increment",
+        "continue-query",
+        "decision",
+        "feedback",
+        "question",
+        "behaviour-to-implement",
+        "behaviour",
+        "expectation",
+        "evidence",
+        "verdict",
+        "behaviour-status",
+        "result"
+      ]
+    },
+    "body": {
+      "type": "string",
+      "description": "The message content."
+    },
+    "refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs this message relates to (behaviour id, expectation id, ...). Lets an auditor trace a single behaviour's lineage."
+    },
+    "in_reply_to": {
+      "type": ["integer", "null"],
+      "description": "seq of the message this responds to. Builds the causal chain."
+    }
+  }
+}
