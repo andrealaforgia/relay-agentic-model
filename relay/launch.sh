@@ -47,22 +47,31 @@ for r in "${ROLES[@]}"; do
     "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
 done
 
+# The Sentinel (Communication Auditor) — external to the chain, in its own window.
+tmux new-window -t "$SWARM" -n sentinel -c "$PROJECT_DIR"
+tmux send-keys -t "$SWARM:sentinel" \
+  "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
+
 # Give claude time to start, then tell each window its role.
 sleep "$START_DELAY"
 for r in "${ROLES[@]}"; do
   tmux send-keys -t "$SWARM:$r" \
     "Read \$RELAY_AGENTS/$r.md and act as the $r for this project. Use the relay CLI as: node \"\$RELAY_TOOL\" <cmd> (your data root is \$RELAY_HOME). When you receive a 'drain your inbox' message, process every pending message per the playbook, then stop." Enter
 done
+tmux send-keys -t "$SWARM:sentinel" \
+  "Read \$RELAY_AGENTS/sentinel.md and act as the Sentinel (Communication Auditor) for this swarm. Your data root is \$RELAY_HOME. When you receive an 'audit time' message, audit new ledger messages per the playbook, then stop." Enter
 
 cat <<EOF
 
 Launched swarm '$SWARM'
   project   : $PROJECT_DIR
   RELAY_HOME: $RELAY_HOME
-  windows   : ${ROLES[*]}
+  windows   : ${ROLES[*]} sentinel
 
-Attach:        tmux attach -t $SWARM        (switch windows: Ctrl-b then 1..4)
+Attach:        tmux attach -t $SWARM        (switch windows: Ctrl-b then 1..5)
 Dispatcher:    python3 $TOOL_DIR/dispatch.py --session $SWARM --home '$RELAY_HOME'
+Sentinel:      python3 $TOOL_DIR/sentinel.py  --session $SWARM --home '$RELAY_HOME'
 Begin:         talk to the 'interpreter' window as the Owner.
-Audit:         RELAY_HOME='$RELAY_HOME' node "$RELAY_TOOL" show
+Audit (rules): RELAY_HOME='$RELAY_HOME' cat '$RELAY_HOME/audit/report.md'
+Audit (msgs):  RELAY_HOME='$RELAY_HOME' node "$RELAY_TOOL" show
 EOF
