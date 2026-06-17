@@ -38,8 +38,12 @@ repeat
 ```
 Track outstanding expectations per behaviour in your working notes this session.
 
+## Relay CLI
+When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+Running by hand from the model repo, it's `node relay/relay.mjs`.
+
 ## Commands
-- `node relay/relay.mjs send --as examiner --to builder  --type expectation      --body "E1: ...\nE2: ..." --refs B1,E1,E2`
+- `node "$RELAY_TOOL" send --as examiner --to builder  --type expectation      --body "E1: ...\nE2: ..." --refs B1,E1,E2`
 - `node relay/relay.mjs send --as examiner --to builder  --type verdict          --body "E2 unmet: ..."   --refs E2 --reply <evidence-seq>`
 - `node relay/relay.mjs send --as examiner --to analyst  --type behaviour-status --body "satisfied"        --refs B1`
 - `node relay/relay.mjs inbox/next/ack --as examiner ...`

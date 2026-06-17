@@ -31,8 +31,12 @@ Poll with `/loop` if you want the session to react automatically, or process on
 demand. If you ever stall, the unprocessed message is sitting in your inbox — just
 re-run the loop.
 
+## Relay CLI
+When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+Running by hand from the model repo, it's `node relay/relay.mjs`.
+
 ## Commands
-- `node relay/relay.mjs inbox --as analyst`
+- `node "$RELAY_TOOL" inbox --as analyst`
 - `node relay/relay.mjs next  --as analyst`
 - `node relay/relay.mjs send  --as analyst --to examiner   --type behaviour        --body "..." --refs B1`
 - `node relay/relay.mjs send  --as analyst --to interpreter --type behaviour-status --body "..." --refs B1`

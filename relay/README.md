@@ -27,24 +27,59 @@ relay/
 ## Launch (one time)
 
 ```
-node relay/relay.mjs init      # creates the mailboxes and an empty ledger
+relay/launch.sh <swarm-name> [project-dir]
 ```
 
-Then open **four terminals**, run `claude` in each from the repo root, and give each
-its role, e.g.:
+This creates a tmux session named `<swarm-name>` with four windows
+(interpreter, analyst, examiner, builder), each running `claude` in `project-dir`
+and primed with its role. The swarm's private state lives in
+`<project-dir>/.relay` — its `RELAY_HOME`. Then, in a separate terminal, start the
+push dispatcher for that swarm:
 
-> "Read `relay/agents/examiner.md` and act as the Examiner. Run your loop."
+```
+python3 relay/dispatch.py --session <swarm-name> --home <project-dir>/.relay
+```
 
-| Session | Playbook | Driven by |
-|---------|----------|-----------|
-| Interpreter | `agents/interpreter.md` | the human Owner (this is where you talk) |
-| Analyst | `agents/analyst.md` | reacts to its inbox |
-| Examiner | `agents/examiner.md` | reacts to its inbox |
-| Builder | `agents/builder.md` | reacts to its inbox |
+| Window | Playbook | Driven by |
+|--------|----------|-----------|
+| interpreter | `agents/interpreter.md` | the human Owner (this is where you talk) |
+| analyst | `agents/analyst.md` | woken by the dispatcher when a message arrives |
+| examiner | `agents/examiner.md` | woken by the dispatcher when a message arrives |
+| builder | `agents/builder.md` | woken by the dispatcher when a message arrives |
 
-The reactive sessions can poll with `/loop` (e.g. `/loop 15s` running their check),
-or you can process on demand. Nothing happens until the Owner and Interpreter send
-the first `behaviour-to-implement` — the chain is driven top-down.
+Attach with `tmux attach -t <swarm-name>` (switch windows: `Ctrl-b` then `1`–`4`).
+Nothing happens until you talk to the **interpreter** window as the Owner and it
+sends the first `behaviour-to-implement` — the chain is driven top-down.
+
+### Push instead of poll — the dispatcher
+
+`dispatch.py` watches the swarm's `ledger.jsonl` and, for each new message
+addressed to a mailbox role, runs `tmux send-keys` to **wake that role's window**.
+The agents stay idle (and cost nothing) until there's actually something for them —
+no `/loop` polling burning tokens on empty inboxes. The ledger's gap-free `seq`
+means each message is announced exactly once. (You can still drive manually instead:
+just type `process your inbox` in a window, or `/loop` it.)
+
+### Running several swarms at once
+
+Each swarm is fully isolated — its own `RELAY_HOME` (ledger + mailboxes + lock) and
+its own tmux session — so concurrent swarms on different projects never cross:
+
+```
+relay/launch.sh alpha ~/code/project-alpha
+python3 relay/dispatch.py --session alpha --home ~/code/project-alpha/.relay   &
+
+relay/launch.sh beta  ~/code/project-beta
+python3 relay/dispatch.py --session beta  --home ~/code/project-beta/.relay    &
+```
+
+Pick a unique `<swarm-name>` per running swarm. Audit any swarm with
+`RELAY_HOME=<project>/.relay node relay/relay.mjs show`.
+
+### Manual launch (no script)
+
+`RELAY_HOME=<dir> node relay/relay.mjs init`, then open four `claude` sessions
+yourself and tell each: *"Read `relay/agents/<role>.md` and act as the `<role>`."*
 
 ## The message rhythm (one behaviour)
 

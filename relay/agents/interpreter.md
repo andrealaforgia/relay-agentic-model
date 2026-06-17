@@ -36,8 +36,12 @@ talk with Owner  →  send behaviour-to-implement to analyst (one per behaviour)
                  →  deliver increment to Owner, ask continue?  →  repeat / re-plan / stop
 ```
 
+## Relay CLI
+When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (your data root is
+`$RELAY_HOME`). Running by hand from the model repo, it's `node relay/relay.mjs`.
+
 ## Commands
-- Send: `node relay/relay.mjs send --as interpreter --to analyst --type behaviour-to-implement --body "..." --refs B1`
+- Send: `node "$RELAY_TOOL" send --as interpreter --to analyst --type behaviour-to-implement --body "..." --refs B1`
 - Check inbox: `node relay/relay.mjs inbox --as interpreter`
 - Read next: `node relay/relay.mjs next --as interpreter`
 - Ack: `node relay/relay.mjs ack --as interpreter --seq <n>`

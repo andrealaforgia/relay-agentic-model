@@ -1,33 +1,43 @@
 #!/usr/bin/env node
 // Filesystem mailbox relay for the EDD working model.
 // Each agent runs in its own Claude session on the same machine and talks to its
-// neighbours ONLY through this CLI. All state is plain files you can inspect:
+// neighbours ONLY through this CLI. All state is plain files you can inspect.
 //
-//   relay/ledger.jsonl              append-only audit trail (single source of truth)
-//   relay/mailbox/<role>/inbox/     messages waiting for <role>, one JSON file each
-//   relay/mailbox/<role>/done/      messages <role> has processed (ack moves them here)
-//   relay/.seq.lock                 mkdir lock guarding seq-assign + append + drop
+// MULTI-SWARM: the data root is RELAY_HOME (env var), so you can run several
+// independent swarms at once — one per project — each with its own ledger and
+// mailboxes. RELAY_HOME defaults to this script's own directory (single-project
+// use is unchanged). The message rules (topology.json) are read from RELAY_HOME
+// if present there, else from the tool's bundled copy.
 //
-// Rules (adjacency + per-edge vocabulary) live in relay/topology.json and are
-// enforced here on every send — the single chokepoint, exactly like the old append().
+//   <RELAY_HOME>/topology.json          rules (copied in on init)
+//   <RELAY_HOME>/ledger.jsonl           append-only audit trail (source of truth)
+//   <RELAY_HOME>/mailbox/<role>/inbox/  messages waiting for <role>
+//   <RELAY_HOME>/mailbox/<role>/done/   messages <role> has processed
+//   <RELAY_HOME>/.seq.lock              mkdir lock guarding seq-assign + append
 //
 // Commands:
-//   node relay/relay.mjs init
+//   RELAY_HOME=<dir> node relay/relay.mjs init
 //   node relay/relay.mjs send --as <role> --to <role> --type <type> [--body "..."|--body-file F|-] [--refs a,b] [--reply <seq>]
-//   node relay/relay.mjs inbox --as <role>            list pending messages
-//   node relay/relay.mjs next  --as <role>            print the oldest pending message (JSON)
-//   node relay/relay.mjs ack   --as <role> --seq <n>  move that message to done/
-//   node relay/relay.mjs show                         human-readable replay of the ledger
-//   node relay/relay.mjs verify                       re-check topology, vocabulary, sequence
+//   node relay/relay.mjs inbox --as <role>
+//   node relay/relay.mjs next  --as <role>
+//   node relay/relay.mjs ack   --as <role> --seq <n>
+//   node relay/relay.mjs show
+//   node relay/relay.mjs verify
 
-import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, rmdirSync, readdirSync, renameSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, appendFileSync, mkdirSync, rmdirSync, readdirSync, renameSync, copyFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 
-const HERE = new URL('.', import.meta.url)
-const p = (rel) => fileURLToPath(new URL(rel, HERE))
-const TOPO = JSON.parse(readFileSync(p('topology.json'), 'utf8'))
-const LEDGER = p('ledger.jsonl')
-const LOCK = p('.seq.lock')
+const SCRIPT_DIR = fileURLToPath(new URL('.', import.meta.url))
+// Per-swarm data root via RELAY_HOME; default to the tool's own dir.
+const DATA = process.env.RELAY_HOME ? resolve(process.env.RELAY_HOME) : SCRIPT_DIR
+const d = (rel) => join(DATA, rel)
+
+// Rules travel with the data when present (per-swarm), else fall back to bundled.
+const TOPO_PATH = existsSync(d('topology.json')) ? d('topology.json') : join(SCRIPT_DIR, 'topology.json')
+const TOPO = JSON.parse(readFileSync(TOPO_PATH, 'utf8'))
+const LEDGER = d('ledger.jsonl')
+const LOCK = d('.seq.lock')
 const ROLES = TOPO.mailboxRoles
 
 const idx = (n) => TOPO.chain.indexOf(n)
@@ -70,15 +80,14 @@ function withLock(fn) {
   throw new Error('could not acquire .seq.lock (held too long — is a send wedged?)')
 }
 
-// ---- ledger helpers --------------------------------------------------------
+// ---- ledger + mailbox helpers ----------------------------------------------
 function ledgerLines() {
   if (!existsSync(LEDGER)) return []
   return readFileSync(LEDGER, 'utf8').split('\n').filter(Boolean)
 }
 const pad = (n) => String(n).padStart(4, '0')
-
-function inboxDir(role) { return p(`mailbox/${role}/inbox`) }
-function doneDir(role) { return p(`mailbox/${role}/done`) }
+const inboxDir = (role) => d(`mailbox/${role}/inbox`)
+const doneDir = (role) => d(`mailbox/${role}/done`)
 
 function pendingFiles(role) {
   const dir = inboxDir(role)
@@ -88,9 +97,11 @@ function pendingFiles(role) {
 
 // ---- commands --------------------------------------------------------------
 function cmdInit() {
+  mkdirSync(DATA, { recursive: true })
+  if (!existsSync(d('topology.json'))) copyFileSync(join(SCRIPT_DIR, 'topology.json'), d('topology.json'))
   for (const r of ROLES) { mkdirSync(inboxDir(r), { recursive: true }); mkdirSync(doneDir(r), { recursive: true }) }
   if (!existsSync(LEDGER)) writeFileSync(LEDGER, '')
-  console.log(`initialised relay for roles: ${ROLES.join(', ')}`)
+  console.log(`initialised relay at ${DATA} for roles: ${ROLES.join(', ')}`)
 }
 
 function readBody(a) {
@@ -110,10 +121,9 @@ function cmdSend(a) {
     const seq = ledgerLines().length
     const msg = { seq, from, to, type, body, refs, in_reply_to }
     appendFileSync(LEDGER, JSON.stringify(msg) + '\n')
-    // deliver into the recipient's inbox (owner has no mailbox — it's the human)
-    if (ROLES.includes(to)) {
+    if (ROLES.includes(to)) { // owner has no mailbox — it's the human in the Interpreter session
       mkdirSync(inboxDir(to), { recursive: true })
-      writeFileSync(p(`mailbox/${to}/inbox/${pad(seq)}-${from}-${type}.json`), JSON.stringify(msg, null, 2))
+      writeFileSync(d(`mailbox/${to}/inbox/${pad(seq)}-${from}-${type}.json`), JSON.stringify(msg, null, 2))
     }
     console.log(`#${seq} ${from} > ${to} [${type}]${ROLES.includes(to) ? '' : ' (no mailbox: in-session)'}`)
     return msg
@@ -126,7 +136,7 @@ function cmdInbox(a) {
   const files = pendingFiles(role)
   if (!files.length) { console.log(`(${role} inbox empty)`); return }
   for (const f of files) {
-    const m = JSON.parse(readFileSync(p(`mailbox/${role}/inbox/${f}`), 'utf8'))
+    const m = JSON.parse(readFileSync(d(`mailbox/${role}/inbox/${f}`), 'utf8'))
     const oneline = m.body.replace(/\n/g, ' ').slice(0, 80)
     console.log(`#${m.seq} from ${m.from} [${m.type}]${m.refs.length ? ' {' + m.refs.join(',') + '}' : ''}: ${oneline}`)
   }
@@ -137,7 +147,7 @@ function cmdNext(a) {
   if (!role) throw new Error('next needs --as <role>')
   const files = pendingFiles(role)
   if (!files.length) { console.log(JSON.stringify({ empty: true })); return }
-  console.log(readFileSync(p(`mailbox/${role}/inbox/${files[0]}`), 'utf8'))
+  console.log(readFileSync(d(`mailbox/${role}/inbox/${files[0]}`), 'utf8'))
 }
 
 function cmdAck(a) {
@@ -147,7 +157,7 @@ function cmdAck(a) {
   const file = pendingFiles(role).find((f) => f.startsWith(want))
   if (!file) throw new Error(`no pending message #${seq} in ${role}'s inbox`)
   mkdirSync(doneDir(role), { recursive: true })
-  renameSync(p(`mailbox/${role}/inbox/${file}`), p(`mailbox/${role}/done/${file}`))
+  renameSync(d(`mailbox/${role}/inbox/${file}`), d(`mailbox/${role}/done/${file}`))
   console.log(`acked #${seq} (${role})`)
 }
 
@@ -183,7 +193,7 @@ try {
     case 'show': cmdShow(); break
     case 'verify': cmdVerify(); break
     default:
-      console.error('usage: relay.mjs init | send | inbox | next | ack | show | verify')
+      console.error('usage: relay.mjs init | send | inbox | next | ack | show | verify   (data root: $RELAY_HOME)')
       process.exit(1)
   }
 } catch (e) {

@@ -3,3 +3,5 @@ tmp/
 relay/.seq.lock
 relay/mailbox/*/inbox/*.json
 relay/mailbox/*/done/*.json
+.relay/
+__pycache__/

@@ -32,8 +32,12 @@ node relay/relay.mjs ack --as builder --seq <n>
 repeat
 ```
 
+## Relay CLI
+When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+Running by hand from the model repo, it's `node relay/relay.mjs`.
+
 ## Commands
-- `node relay/relay.mjs inbox --as builder`
+- `node "$RELAY_TOOL" inbox --as builder`
 - `node relay/relay.mjs next  --as builder`
 - `node relay/relay.mjs send  --as builder --to examiner --type evidence --body "[executed] $ cmd\n<output>" --refs E1 --reply <expectation-seq>`
 - `node relay/relay.mjs ack   --as builder --seq <n>`
