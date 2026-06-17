@@ -1,0 +1,15 @@
+{
+  "_comment": "Single source of truth for the relay rules, shared by relay.mjs and every agent session. 'chain' defines adjacency (an agent may message only its neighbours). 'allowed' fixes the message vocabulary per directed edge. The owner<->interpreter edge is exercised in the Interpreter's live session with the human, not via mailbox, but is recorded here so its messages still validate when written to the ledger.",
+  "chain": ["owner", "interpreter", "analyst", "examiner", "builder"],
+  "mailboxRoles": ["interpreter", "analyst", "examiner", "builder"],
+  "allowed": {
+    "owner>interpreter": ["problem", "clarification", "roadmap-verdict", "feedback", "decision"],
+    "interpreter>owner": ["roadmap", "increment", "continue-query", "result", "question"],
+    "interpreter>analyst": ["behaviour-to-implement", "clarification"],
+    "analyst>interpreter": ["question", "behaviour-status"],
+    "analyst>examiner": ["behaviour"],
+    "examiner>analyst": ["behaviour-status"],
+    "examiner>builder": ["expectation", "verdict"],
+    "builder>examiner": ["evidence"]
+  }
+}

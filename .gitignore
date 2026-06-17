@@ -1,2 +1,5 @@
 .DS_Store
 tmp/
+relay/.seq.lock
+relay/mailbox/*/inbox/*.json
+relay/mailbox/*/done/*.json
