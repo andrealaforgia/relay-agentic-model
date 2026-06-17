@@ -119,6 +119,21 @@ node relay/relay.mjs verify     # re-checks topology, vocabulary, gap-free seque
 number is itself a signal. Each session's own Claude transcript is a second,
 independent record. Commit `ledger.jsonl` per engagement for tamper-evident history.
 
+## Observers (outside the chain)
+
+These run alongside the swarm but are not links in it — they never send relay
+messages, they only read.
+
+- **Sentinel** (`agents/sentinel.md` + `sentinel.py`) — the Communication Auditor.
+  Periodically audits the ledger for per-edge contract breaches (e.g. the Builder
+  leaking implementation detail up to the Examiner) and writes findings to
+  `<RELAY_HOME>/audit/`. Launched as a 5th tmux window; trigger with
+  `python3 relay/sentinel.py --session <swarm> --home <project>/.relay`.
+- **Communication Drawer** (`draw.py`) — renders the ledger as a Kaleidoscope-style
+  swimlane board (one lane per agent, expandable message cards, direction arrows).
+  Deterministic; re-run anytime:
+  `python3 relay/draw.py --home <project>/.relay` → `<RELAY_HOME>/comms-site/index.html`.
+
 ## Why this resists getting stuck
 
 All state is inspectable files — there is no hidden broker/connection state to
