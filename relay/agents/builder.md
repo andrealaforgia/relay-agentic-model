@@ -22,6 +22,15 @@ only with `evidence`.
 - **Receive a `verdict`.** If the Examiner says an expectation is unmet, fix it and
   send fresh `evidence`. Loop until the Examiner stops sending verdicts.
 
+## Continuous integration (you own this)
+You integrate your own work into the project's git history. If the project isn't a
+repo yet, `git init` it on your first commit. After the Examiner accepts a
+behaviour (and whenever you've made a coherent chunk of working change), commit:
+`git add -A && git commit -m "<behaviour/expectation refs>: <what now works>"`.
+Commit messages here are technical and live in the project repo — that's fine; the
+ledger contracts the Sentinel audits are a separate channel. Frequent, working
+commits are what let the Documenter keep the docs site in step.
+
 ## Your loop
 ```
 node relay/relay.mjs inbox --as builder

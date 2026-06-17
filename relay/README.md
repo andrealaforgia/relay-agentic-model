@@ -133,6 +133,13 @@ messages, they only read.
   swimlane board (one lane per agent, expandable message cards, direction arrows).
   Deterministic; re-run anytime:
   `python3 relay/draw.py --home <project>/.relay` → `<RELAY_HOME>/comms-site/index.html`.
+- **Documenter** (`agents/documenter.md` + `docwatch.py`) — maintains an **end-user
+  documentation website** (Docusaurus + Mermaid diagrams, deployable to Vercel).
+  `docwatch.py` watches the project's git history and wakes the Documenter with the
+  diff since it last looked; the agent updates the docs and advances its cursor.
+  Optional: add its window with `WITH_DOCUMENTER=1 relay/launch.sh …`, then
+  `python3 relay/docwatch.py --session <swarm> --home <project>/.relay`. Requires the
+  Builder to commit its work (it does — see `agents/builder.md`).
 
 ## Why this resists getting stuck
 

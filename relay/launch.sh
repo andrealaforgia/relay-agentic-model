@@ -30,6 +30,17 @@ if tmux has-session -t "$SWARM" 2>/dev/null; then
   exit 1
 fi
 
+# The Builder commits its work and docwatch reads the history, so the project
+# must be a git repo.
+if [[ ! -d "$PROJECT_DIR/.git" ]]; then
+  git -C "$PROJECT_DIR" init -q && echo "git-initialised $PROJECT_DIR"
+fi
+# Keep the relay's own state ($PROJECT_DIR/.relay) out of the project history,
+# so the Builder's commits and the Documenter's diff only ever see real code.
+if ! grep -qsx '.relay/' "$PROJECT_DIR/.gitignore" 2>/dev/null; then
+  printf '%s\n' '.relay/' >> "$PROJECT_DIR/.gitignore"
+fi
+
 # Scaffold this swarm's private state (idempotent).
 RELAY_HOME="$RELAY_HOME" node "$RELAY_TOOL" init
 
@@ -61,6 +72,16 @@ done
 tmux send-keys -t "$SWARM:sentinel" \
   "Read \$RELAY_AGENTS/sentinel.md and act as the Sentinel (Communication Auditor) for this swarm. Your data root is \$RELAY_HOME. When you receive an 'audit time' message, audit new ledger messages per the playbook, then stop." Enter
 
+# Optional: the Documenter (end-user docs site). Enable with WITH_DOCUMENTER=1.
+if [[ "${WITH_DOCUMENTER:-0}" == "1" ]]; then
+  tmux new-window -t "$SWARM" -n documenter -c "$PROJECT_DIR"
+  tmux send-keys -t "$SWARM:documenter" \
+    "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
+  sleep "$START_DELAY"
+  tmux send-keys -t "$SWARM:documenter" \
+    "Read \$RELAY_AGENTS/documenter.md and act as the Documenter for this project. Your data root is \$RELAY_HOME. On first run scaffold the Docusaurus docs site; when you receive a 'new commits' message, update the end-user docs from the diff, then stop." Enter
+fi
+
 cat <<EOF
 
 Launched swarm '$SWARM'
@@ -71,6 +92,7 @@ Launched swarm '$SWARM'
 Attach:        tmux attach -t $SWARM        (switch windows: Ctrl-b then 1..5)
 Dispatcher:    python3 $TOOL_DIR/dispatch.py --session $SWARM --home '$RELAY_HOME'
 Sentinel:      python3 $TOOL_DIR/sentinel.py  --session $SWARM --home '$RELAY_HOME'
+Documenter:    WITH_DOCUMENTER=1 to add its window, then: python3 $TOOL_DIR/docwatch.py --session $SWARM --home '$RELAY_HOME'
 Begin:         talk to the 'interpreter' window as the Owner.
 Audit (rules): RELAY_HOME='$RELAY_HOME' cat '$RELAY_HOME/audit/report.md'
 Audit (msgs):  RELAY_HOME='$RELAY_HOME' node "$RELAY_TOOL" show
