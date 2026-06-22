@@ -23,6 +23,7 @@ TOOL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # the relay/ folder
 RELAY_TOOL="$TOOL_DIR/relay.mjs"
 RELAY_HOME="$PROJECT_DIR/.relay"
 START_DELAY="${START_DELAY:-6}"   # seconds to let claude boot before sending the kickoff
+CLAUDE_CMD="${CLAUDE_CMD:-claude}"   # override to e.g. "claude --dangerously-skip-permissions" for hands-off swarms
 ROLES=(interpreter analyst examiner builder)
 
 if tmux has-session -t "$SWARM" 2>/dev/null; then
@@ -55,13 +56,13 @@ for r in "${ROLES[@]}"; do
   fi
   # env vars exported here are inherited by claude and by its Bash tool subprocesses
   tmux send-keys -t "$SWARM:$r" \
-    "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
+    "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && $CLAUDE_CMD" Enter
 done
 
 # The Sentinel (Communication Auditor) — external to the chain, in its own window.
 tmux new-window -t "$SWARM" -n sentinel -c "$PROJECT_DIR"
 tmux send-keys -t "$SWARM:sentinel" \
-  "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
+  "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && $CLAUDE_CMD" Enter
 
 # Give claude time to start, then tell each window its role.
 sleep "$START_DELAY"
@@ -76,7 +77,7 @@ tmux send-keys -t "$SWARM:sentinel" \
 if [[ "${WITH_DOCUMENTER:-0}" == "1" ]]; then
   tmux new-window -t "$SWARM" -n documenter -c "$PROJECT_DIR"
   tmux send-keys -t "$SWARM:documenter" \
-    "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && claude" Enter
+    "export RELAY_HOME='$RELAY_HOME' RELAY_TOOL='$RELAY_TOOL' RELAY_AGENTS='$TOOL_DIR/agents' && $CLAUDE_CMD" Enter
   sleep "$START_DELAY"
   tmux send-keys -t "$SWARM:documenter" \
     "Read \$RELAY_AGENTS/documenter.md and act as the Documenter for this project. Your data root is \$RELAY_HOME. On first run scaffold the Docusaurus docs site; when you receive a 'new commits' message, update the end-user docs from the diff, then stop." Enter

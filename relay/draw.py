@@ -55,7 +55,10 @@ def card(m, lanes):
 
 
 def render(chain, msgs):
-    lanes = chain
+    # Lanes are the chain, plus any out-of-chain participant that appears in the
+    # ledger (e.g. the Sentinel, which speaks to agents from outside the pipeline).
+    extras = sorted({p for m in msgs for p in (m["from"], m["to"]) if p not in chain})
+    lanes = list(chain) + extras
     channels = sorted({f'{m["from"]}>{m["to"]}' for m in msgs})
     participants = sorted({p for m in msgs for p in (m["from"], m["to"])}, key=lanes.index)
     headers = "".join(
@@ -109,11 +112,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--home", default=None, help="RELAY_HOME of the swarm (default: $RELAY_HOME)")
     ap.add_argument("--out", default=None, help="output HTML path (default: <home>/comms-site/index.html)")
+    ap.add_argument("--refresh", type=int, default=0,
+                    help="if >0, embed a meta-refresh so an open browser tab auto-reloads every N seconds")
     a = ap.parse_args()
     home, chain, msgs = load(a.home)
     out = pathlib.Path(a.out) if a.out else home / "comms-site" / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(render(chain, msgs))
+    page = render(chain, msgs)
+    if a.refresh > 0:  # written into the fresh render each time — cannot accumulate
+        page = page.replace('<meta charset="utf-8">',
+                            f'<meta charset="utf-8"><meta http-equiv="refresh" content="{a.refresh}">', 1)
+    out.write_text(page)
     print(f"wrote {out} ({len(msgs)} messages)")
 
 

@@ -40,14 +40,15 @@ const LEDGER = d('ledger.jsonl')
 const LOCK = d('.seq.lock')
 const ROLES = TOPO.mailboxRoles
 
-const idx = (n) => TOPO.chain.indexOf(n)
-const adjacent = (a, b) => idx(a) !== -1 && idx(b) !== -1 && Math.abs(idx(a) - idx(b)) === 1
-
+// `allowed` is the authoritative permission list: an edge is permitted iff it is
+// listed there. The linear chain agents only have neighbour edges listed, so their
+// adjacency is enforced implicitly; the out-of-chain Sentinel is permitted to speak
+// to any agent via its explicit sentinel>* edges.
 function validate(from, to, type) {
-  if (!adjacent(from, to)) throw new Error(`topology violation: ${from} may not speak to ${to}`)
   const key = `${from}>${to}`
   const allowed = TOPO.allowed[key]
-  if (!allowed || !allowed.includes(type)) throw new Error(`vocabulary violation: '${type}' is not allowed on edge ${key}`)
+  if (!allowed) throw new Error(`topology violation: ${from} may not speak to ${to}`)
+  if (!allowed.includes(type)) throw new Error(`vocabulary violation: '${type}' is not allowed on edge ${key}`)
 }
 
 // ---- argument parsing ------------------------------------------------------

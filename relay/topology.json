@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for the relay rules, shared by relay.mjs and every agent session. 'chain' defines adjacency (an agent may message only its neighbours). 'allowed' fixes the message vocabulary per directed edge. The owner<->interpreter edge is exercised in the Interpreter's live session with the human, not via mailbox, but is recorded here so its messages still validate when written to the ledger.",
+  "_comment": "Single source of truth for the relay rules, shared by relay.mjs and every agent session. 'allowed' is the AUTHORITATIVE permission list: an edge is permitted iff it is listed here. 'chain' documents the linear pipeline order (the chain agents have only neighbour edges in 'allowed', so their adjacency is enforced implicitly). The owner<->interpreter edge is exercised in the Interpreter's live session with the human, not via mailbox, but is recorded here so its messages still validate when written to the ledger. The SENTINEL stands outside the chain and, via the sentinel>* edges below, may speak one-way to ANY agent (advisory/warning/directive) to keep communication on-contract; no agent replies to it.",
   "chain": ["owner", "interpreter", "analyst", "examiner", "builder"],
   "mailboxRoles": ["interpreter", "analyst", "examiner", "builder"],
   "allowed": {
@@ -10,6 +10,10 @@
     "analyst>examiner": ["behaviour"],
     "examiner>analyst": ["behaviour-status"],
     "examiner>builder": ["expectation", "verdict"],
-    "builder>examiner": ["evidence"]
+    "builder>examiner": ["evidence"],
+    "sentinel>interpreter": ["advisory", "warning", "directive"],
+    "sentinel>analyst": ["advisory", "warning", "directive"],
+    "sentinel>examiner": ["advisory", "warning", "directive"],
+    "sentinel>builder": ["advisory", "warning", "directive"]
   }
 }

@@ -6,93 +6,183 @@ can `ls`, `cat`, and replay. A stuck chain is just a message sitting in an inbox
 
 ```
 Owner (human)  ⇄  Interpreter  ⇄  Analyst  ⇄  Examiner  ⇄  Builder
-                  └── live session ──┘   └─── mailbox files ───┘
+└── live session ──┘            └──────── mailbox files (relay) ────────┘
 ```
 
-The `owner↔interpreter` edge is a live conversation in the Interpreter's session.
-The three agent-to-agent edges go through mailboxes.
+Only the `owner↔interpreter` edge is a live conversation (the human types in the
+Interpreter's session). All three agent-to-agent edges — Interpreter↔Analyst,
+Analyst↔Examiner, Examiner↔Builder — go through mailbox files via the relay.
 
 ## Files
 
 ```
 relay/
-  topology.json          the rules: adjacency + per-edge message vocabulary
+  topology.json          the rules: permitted edges + per-edge message vocabulary
   relay.mjs              the CLI: send / inbox / next / ack / show / verify
   ledger.jsonl           append-only audit trail — the single source of truth
   mailbox/<role>/inbox/  messages waiting for <role>
   mailbox/<role>/done/   messages <role> has processed
   agents/<role>.md       the playbook each session adopts
+
+  iterm_launch.py        open the swarm as separate, tiled iTerm windows
+  iterm_dispatch.py      push dispatcher — wakes a window when it has mail
+  iterm_sentinel.py      trigger that wakes the Sentinel to audit
+  iterm_decorate.py      give each window a role badge + background colour
+  iterm/windows.json     role -> iTerm session UUID (written by the launcher)
+  docwatch.py            optional: wakes a Documenter from git history
 ```
 
-## Launch (one time)
+## Running as separate iTerm windows (recommended)
+
+Each agent gets its own iTerm window, tiled across the screen so you can watch them
+all at once. A few small Python tools drive it; all address sessions by their stable
+iTerm **session UUID** (window ids get recycled when a window closes, which would
+misdeliver a wake).
 
 ```
-relay/launch.sh <swarm-name> [project-dir]
+# 1. open the swarm (idempotent: preserves an existing ledger + mailboxes).
+#    Hands-off by default (claude --dangerously-skip-permissions). START_DELAY gives
+#    claude time to boot before the role kickoff is sent.
+START_DELAY=15 python3 relay/iterm_launch.py <swarm-name> <project-dir>
+
+# 2. delivery — wakes a window when its inbox has ledger-verified mail (leave running)
+python3 relay/iterm_dispatch.py --home <project-dir>/.relay &
+
+# 3. the Sentinel's audit trigger (leave running)
+python3 relay/iterm_sentinel.py --home <project-dir>/.relay &
+
+# 4. (optional) badge + per-role background colour on the live windows
+python3 relay/iterm_decorate.py --home <project-dir>/.relay
 ```
 
-This creates a tmux session named `<swarm-name>` with four windows
-(interpreter, analyst, examiner, builder), each running `claude` in `project-dir`
-and primed with its role. The swarm's private state lives in
-`<project-dir>/.relay` — its `RELAY_HOME`. Then, in a separate terminal, start the
-push dispatcher for that swarm:
+Then talk to the **interpreter** window as the Owner. `node`/`npm` must be on the
+agents' PATH (e.g. symlinked into `/opt/homebrew/bin` if you use nvm).
+
+The dispatcher is **rock-solid by design**: it watches inboxes (not the ledger), so
+N messages arriving at once cause exactly one wake; it sends the wake in two steps
+(text, then a separate newline) so it actually submits instead of pasting; it
+only delivers inbox files backed by a real ledger entry from a permitted sender
+(so a file dropped straight into a mailbox is ignored); and it re-wakes an idle
+window that still has mail, so a dropped wake self-heals.
+
+### Resume after a restart / crash
+
+All state is on disk, so a reboot only loses the *processes*. Re-run the same four
+steps — `iterm_launch.py`'s init is idempotent (keeps the ledger and mailboxes), the
+agents re-read their playbooks, and the dispatcher wakes whoever still has pending
+mail. The swarm continues from exactly where it stopped. (`iterm_decorate.py` is
+worth re-running too, since fresh windows start undecorated.)
+
+### Decoration palette
+
+`iterm_decorate.py` writes a role badge (e.g. `BUILDER`) and a dark-tinted
+background to each live window via iTerm escape sequences (no relaunch). Edit the
+`PALETTE` at the top of that file to change colours, then re-run it.
+
+### Several swarms at once
+
+Each swarm is fully isolated — its own `RELAY_HOME` (ledger + mailboxes + lock), its
+own `iterm/windows.json`, and its own set of iTerm windows — so concurrent swarms on
+different projects never cross. Launch each with a different project dir and run one
+dispatcher per swarm:
 
 ```
-python3 relay/dispatch.py --session <swarm-name> --home <project-dir>/.relay
+python3 relay/iterm_launch.py   alpha ~/code/project-alpha
+python3 relay/iterm_dispatch.py --home ~/code/project-alpha/.relay &
+
+python3 relay/iterm_launch.py   beta  ~/code/project-beta
+python3 relay/iterm_dispatch.py --home ~/code/project-beta/.relay  &
 ```
 
-| Window | Playbook | Driven by |
-|--------|----------|-----------|
-| interpreter | `agents/interpreter.md` | the human Owner (this is where you talk) |
-| analyst | `agents/analyst.md` | woken by the dispatcher when a message arrives |
-| examiner | `agents/examiner.md` | woken by the dispatcher when a message arrives |
-| builder | `agents/builder.md` | woken by the dispatcher when a message arrives |
+Audit any swarm with `RELAY_HOME=<project>/.relay node relay/relay.mjs show`.
 
-Attach with `tmux attach -t <swarm-name>` (switch windows: `Ctrl-b` then `1`–`4`).
-Nothing happens until you talk to the **interpreter** window as the Owner and it
-sends the first `behaviour-to-implement` — the chain is driven top-down.
+## The message rhythm
 
-### Push instead of poll — the dispatcher
+The "rhythm" is the fixed sequence of messages that carries **one unit of work**
+from the human all the way down to running code and back. Each arrow crosses an
+edge, and **every edge is a translation to a different level of abstraction**. That
+is the whole point of the chain: detail is not allowed to leak *up* toward the human,
+and the human's framing is not allowed to leak *down* into code. Each role only ever
+speaks the language of its own edge (the Sentinel audits exactly this — see below).
 
-`dispatch.py` watches the swarm's `ledger.jsonl` and, for each new message
-addressed to a mailbox role, runs `tmux send-keys` to **wake that role's window**.
-The agents stay idle (and cost nothing) until there's actually something for them —
-no `/loop` polling burning tokens on empty inboxes. The ledger's gap-free `seq`
-means each message is announced exactly once. (You can still drive manually instead:
-just type `process your inbox` in a window, or `/loop` it.)
-
-### Running several swarms at once
-
-Each swarm is fully isolated — its own `RELAY_HOME` (ledger + mailboxes + lock) and
-its own tmux session — so concurrent swarms on different projects never cross:
+Going down the chain, the same idea is progressively sharpened:
 
 ```
-relay/launch.sh alpha ~/code/project-alpha
-python3 relay/dispatch.py --session alpha --home ~/code/project-alpha/.relay   &
-
-relay/launch.sh beta  ~/code/project-beta
-python3 relay/dispatch.py --session beta  --home ~/code/project-beta/.relay    &
+Owner        a problem / a need, in plain words
+  │
+Interpreter  a behaviour to implement   (a need, in the Owner's terms)
+  │
+Analyst      a behaviour                (an observable outcome — actor + effect + bounds, no solution)
+  │
+Examiner     expectations E1..En        (precise, checkable statements of what must hold)
+  │
+Builder      code + evidence            (it built it, and proved each expectation with real output)
 ```
 
-Pick a unique `<swarm-name>` per running swarm. Audit any swarm with
-`RELAY_HOME=<project>/.relay node relay/relay.mjs show`.
-
-### Manual launch (no script)
-
-`RELAY_HOME=<dir> node relay/relay.mjs init`, then open four `claude` sessions
-yourself and tell each: *"Read `relay/agents/<role>.md` and act as the `<role>`."*
-
-## The message rhythm (one behaviour)
+### One behaviour, end to end
 
 ```
 Interpreter --behaviour-to-implement--> Analyst
 Analyst     --behaviour-------------->   Examiner
-Examiner    --expectation------------>   Builder        (a set E1..En, incl. an integration expectation)
+Examiner    --expectation------------>   Builder    (a set E1..En, incl. an integration expectation)
 Builder     --evidence--------------->   Examiner
-Examiner    --verdict (if unmet)----->   Builder        (loop until satisfied)
+Examiner    --verdict (if unmet)----->   Builder    ⟲ loop until every expectation is satisfied
 Examiner    --behaviour-status------->   Analyst
 Analyst     --behaviour-status------->   Interpreter
 Interpreter --increment + continue?-->   Owner
 ```
+
+Before any of that, there is a **setup phase** between the Owner and the Interpreter
+(a live conversation, logged to the ledger): the Owner states the problem, the
+Interpreter asks questions and proposes a roadmap, the Owner approves it, and only
+then does the Interpreter send the first `behaviour-to-implement`.
+
+### Message types in detail
+
+Every message has a `type`, and `topology.json` fixes which types are legal on each
+edge. What each type means and the abstraction it carries:
+
+**Setup & steering — Owner ↔ Interpreter**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `problem` | Owner → Interpreter | The human states what they want, in plain language. The start of everything. |
+| `question` | Interpreter → Owner | The Interpreter asks for missing information *before* planning, so ambiguity is resolved rather than assumed. |
+| `clarification` | Owner → Interpreter | The Owner's answers / refinements to those questions. |
+| `roadmap` | Interpreter → Owner | A proposed ordered set of *potentially shippable iterations* (each a few behaviours). Awaits approval. |
+| `roadmap-verdict` | Owner → Interpreter | The Owner approves the roadmap or asks for changes (re-ordered, merged, dropped). |
+| `increment` | Interpreter → Owner | After an iteration's behaviours are all satisfied, the Interpreter presents the working result. |
+| `continue-query` | Interpreter → Owner | "Continue to the next iteration, stop, or re-plan?" — the gate the Owner controls. |
+| `feedback` / `decision` | Owner → Interpreter | The Owner's reaction to an increment, and their go / stop / change call. |
+| `result` | Interpreter → Owner | Final delivery / summary when the work is done. |
+
+**The build chain — one behaviour's journey**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `behaviour-to-implement` | Interpreter → Analyst | One concrete capability from the approved roadmap, still expressed as an **Owner-level need** ("what to build next"), never as a solution. |
+| `clarification` | Interpreter → Analyst | Extra context / answers when the Analyst needs them. |
+| `question` | Analyst → Interpreter | The Analyst asks back up if a need is ambiguous (it does *not* guess). |
+| `behaviour` | Analyst → Examiner | The need reframed as an **observable behaviour**: an actor, an observable outcome, and boundaries — with every hint of *how* stripped out. "What must be observably true." |
+| `expectation` | Examiner → Builder | The Examiner decomposes a behaviour into a **set of precise, checkable expectations** (E1..En) — plain-language statements of exactly what must hold, including an end-to-end *integration* expectation. This is the spec the Builder satisfies. Still no "how". |
+| `evidence` | Builder → Examiner | The Builder writes the code, runs it, and reports **which expectations now hold, with executed evidence** — real output, runs, screenshots, measured values. It reports *only* fulfilled expectations, never implementation detail. (EDD prefers *executed* evidence over merely *narrated* / generative.) |
+| `verdict` | Examiner → Builder | The Examiner judges the evidence against the expectations. If anything is unmet or unconvincing, the verdict says what still fails and the Builder iterates — **this loops until every expectation is satisfied**. |
+| `behaviour-status` | Examiner → Analyst | Once all expectations pass, the Examiner reports the behaviour as satisfied (with its evidence). |
+| `behaviour-status` | Analyst → Interpreter | The Analyst relays it upward as **"which problem was solved"** — back in the Owner's terms, never mentioning expectations, tests, or code. |
+
+**Out-of-band — the Sentinel (auditor, outside the chain)**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `advisory` | Sentinel → any agent | A non-blocking heads-up that a message is drifting off-contract (e.g. starting to leak implementation detail). |
+| `warning` | Sentinel → any agent | A contract drift the agent should correct on its next message. |
+| `directive` | Sentinel → any agent | A corrective instruction (e.g. "restate your last message without the file names"). |
+
+The Examiner ⟲ Builder loop (`expectation` → `evidence` → `verdict` → …) is the heart
+of **Expectation-Driven Development**: correctness is established by stating
+expectations in plain language and proving them with real evidence, rather than by
+the Builder asserting "done." The code itself may carry no unit tests at all — the
+expectations and their evidence, recorded in the ledger, are the proof.
 
 ## Sending and receiving
 
@@ -121,14 +211,18 @@ independent record. Commit `ledger.jsonl` per engagement for tamper-evident hist
 
 ## Observers (outside the chain)
 
-These run alongside the swarm but are not links in it — they never send relay
-messages, they only read.
+These run alongside the swarm but are not links in the chain. The Communication
+Drawer and Documenter only read. The **Sentinel** reads the whole ledger and —
+via the `sentinel>*` edges in `topology.json` — may also send one-way
+`advisory`/`warning`/`directive` messages to any agent to keep communication
+on-contract (no agent replies to it).
 
-- **Sentinel** (`agents/sentinel.md` + `sentinel.py`) — the Communication Auditor.
-  Periodically audits the ledger for per-edge contract breaches (e.g. the Builder
-  leaking implementation detail up to the Examiner) and writes findings to
-  `<RELAY_HOME>/audit/`. Launched as a 5th tmux window; trigger with
-  `python3 relay/sentinel.py --session <swarm> --home <project>/.relay`.
+- **Sentinel** (`agents/sentinel.md` + `iterm_sentinel.py`) — the Communication
+  Auditor. Periodically audits the ledger for per-edge contract breaches (e.g. the
+  Builder leaking implementation detail up to the Examiner), writes findings to
+  `<RELAY_HOME>/audit/`, and may advise the offending agent directly
+  (`sentinel>*` edges). Its window is opened by `iterm_launch.py`; wake it on a
+  schedule with `python3 relay/iterm_sentinel.py --home <project>/.relay`.
 - **Communication Drawer** (`draw.py`) — renders the ledger as a Kaleidoscope-style
   swimlane board (one lane per agent, expandable message cards, direction arrows).
   Deterministic; re-run anytime:
@@ -137,8 +231,8 @@ messages, they only read.
   documentation website** (Docusaurus + Mermaid diagrams, deployable to Vercel).
   `docwatch.py` watches the project's git history and wakes the Documenter with the
   diff since it last looked; the agent updates the docs and advances its cursor.
-  Optional: add its window with `WITH_DOCUMENTER=1 relay/launch.sh …`, then
-  `python3 relay/docwatch.py --session <swarm> --home <project>/.relay`. Requires the
+  Optional, and not yet wired into the iTerm launcher — open a Documenter window
+  yourself, then run the watcher against the project's `.relay`. Requires the
   Builder to commit its work (it does — see `agents/builder.md`).
 
 ## Why this resists getting stuck
