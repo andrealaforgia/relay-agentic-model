@@ -3,8 +3,10 @@
 
 Opens one iTerm window per role, tiled across the screen so you can watch them
 all at once, each running `claude` in the project dir primed with its playbook.
-Records role -> iTerm window id in <RELAY_HOME>/iterm/windows.json so the
-companion dispatcher (iterm_dispatch.py) can wake the right window.
+Records role -> iTerm session UUID in <RELAY_HOME>/iterm/windows.json so the
+companion dispatcher (iterm_dispatch.py) can wake the right session (UUIDs are
+stable; window ids get recycled when a window closes and would misdeliver a wake).
+Each window is also given a role badge + colour (via iterm_decorate.py).
 
   python3 relay/iterm_launch.py <swarm-name> <project-dir>
 
@@ -167,6 +169,10 @@ def main():
     for r in ROLES:
         write_to_window(win_ids[r], "", submit=True)  # bare newline = submit the queued kickoff
         print(f"submitted {r}")
+
+    # Decorate each window with its role badge + colour (reuses iterm_decorate.py so
+    # its PALETTE stays the single source of truth for colours).
+    subprocess.run(["python3", str(TOOL_DIR / "iterm_decorate.py"), "--home", str(relay_home)], check=False)
 
     print(f"\nLaunched swarm '{swarm}' as iTerm windows.")
     print(f"  project   : {project}")

@@ -28,6 +28,16 @@ You never talk to the Examiner or Builder, and you know nothing about them.
    **increment** to the Owner in the chat (`--type increment`) and ask whether to
    continue (`--type continue-query`). The Owner replies `feedback` + `decision`.
 
+## Broadcasts (extraordinary, line-wide)
+Sometimes the Owner gives an instruction the **whole chain** must honour — a global
+constraint, a priority shift, "stop after the current behaviour," "everything must be
+GDPR-safe." That is a **broadcast**, not a normal behaviour. When the Owner sends one:
+record it from the Owner (`--as owner --to interpreter --type broadcast --body "..."`),
+apply it to your own work, and **forward it down the line** to the Analyst
+(`--as interpreter --to analyst --type broadcast --body "..."`). Each agent below
+does the same, so the instruction reaches every station. Forward the intent intact —
+do not abstract it away as you would a behaviour.
+
 ## Your loop
 ```
 talk with Owner  →  send behaviour-to-implement to analyst (one per behaviour)

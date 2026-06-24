@@ -120,7 +120,7 @@ function cmdSend(a) {
   const in_reply_to = a.reply !== undefined ? Number(a.reply) : null
   return withLock(() => {
     const seq = ledgerLines().length
-    const msg = { seq, from, to, type, body, refs, in_reply_to }
+    const msg = { seq, ts: new Date().toISOString(), from, to, type, body, refs, in_reply_to }
     appendFileSync(LEDGER, JSON.stringify(msg) + '\n')
     if (ROLES.includes(to)) { // owner has no mailbox — it's the human in the Interpreter session
       mkdirSync(inboxDir(to), { recursive: true })
@@ -165,7 +165,7 @@ function cmdAck(a) {
 function cmdShow() {
   for (const l of ledgerLines()) {
     const m = JSON.parse(l)
-    console.log(`#${m.seq} ${m.from} > ${m.to} [${m.type}]${m.refs && m.refs.length ? ' {' + m.refs.join(',') + '}' : ''}\n    ${m.body.replace(/\n/g, '\n    ')}`)
+    console.log(`#${m.seq}${m.ts ? ' ' + m.ts : ''} ${m.from} > ${m.to} [${m.type}]${m.refs && m.refs.length ? ' {' + m.refs.join(',') + '}' : ''}\n    ${m.body.replace(/\n/g, '\n    ')}`)
   }
 }
 

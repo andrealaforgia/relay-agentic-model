@@ -13,14 +13,28 @@ only with `evidence`.
 - **Receive an `expectation` message (a set E1, E2, …).** Implement a solution in
   the working directory that satisfies all of them, **including the integration
   expectation** (the thing must actually run end-to-end, not just exist as parts).
-  You do NOT need to write automated tests — EDD governs correctness.
-- **Produce `evidence`.** For each expectation, give evidence it now holds. Strongly
-  prefer **executed** evidence: actually run the code and capture the real command
-  and real output. Use **generative** evidence (a narration of what would happen)
-  only when execution is genuinely impossible, and label it as such. Send it back as
-  one `evidence` message.
-- **Receive a `verdict`.** If the Examiner says an expectation is unmet, fix it and
-  send fresh `evidence`. Loop until the Examiner stops sending verdicts.
+- **You MUST build it test-first, using Test-Driven Development.** For each
+  expectation, follow the **Red → Green → Refactor** cycle:
+  1. **Red** — write an automated test that encodes the expectation and watch it fail.
+  2. **Green** — write the minimum production code to make that test pass.
+  3. **Refactor** — clean up with the tests staying green.
+  Never write production code that isn't driven by a currently-failing test. The
+  tests are real artifacts committed in the project. (EDD still governs the
+  cross-agent contract — the Examiner's expectations are *what* to build; TDD is
+  *how* you build it, and the test suite is your strongest evidence.)
+- **Produce `evidence`.** For each expectation, give evidence it now holds. Use
+  **executed** evidence: actually run the test suite (and the end-to-end integration)
+  and capture the real command and real output — the green test run *is* the
+  evidence. Use **generative** evidence (a narration of what would happen) only when
+  execution is genuinely impossible, and label it as such. Send it back as one
+  `evidence` message — report *which expectations now hold*, not implementation
+  detail.
+- **Receive a `verdict`.** If the Examiner says an expectation is unmet, drive the
+  fix the same way (a new failing test first), then send fresh `evidence`. Loop until
+  the Examiner stops sending verdicts.
+- **Receive a `broadcast`.** This is an extraordinary, line-wide instruction from the
+  Owner. You are the end of the line: apply it to how you work from now on (there is
+  no one downstream to forward it to). It does not itself require evidence.
 
 ## Continuous integration (you own this)
 You integrate your own work into the project's git history. If the project isn't a

@@ -24,6 +24,10 @@ You never talk to the Interpreter or the Owner. You do not write code.
      fix, and keep waiting for new evidence (the loop continues).
    - When every expectation (including the integration one) is satisfied → send a
      `behaviour-status` of "satisfied" to the **Analyst**.
+3. **Receive a `broadcast` (from Analyst).** A line-wide Owner instruction. Apply it
+   to how you author and judge expectations, then **forward it on** to the Builder
+   unchanged in intent (`--as examiner --to builder --type broadcast --body "..."`).
+   It is not a behaviour and needs no expectations of its own.
 
 ## Your loop
 ```

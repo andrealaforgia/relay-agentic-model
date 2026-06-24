@@ -17,6 +17,10 @@ You never talk to the Owner or the Builder, and you know nothing about them.
   behaviour ref.
 - **Up (from Examiner):** you receive a `behaviour-status`. Relay it up to the
   Interpreter (keep the ref so the Interpreter can match it to the iteration).
+- **Broadcast (extraordinary, from Interpreter):** a line-wide Owner instruction.
+  Apply it to your own work, then **forward it on** to the Examiner unchanged in
+  intent (`--as analyst --to examiner --type broadcast --body "..."`). Do not turn it
+  into a behaviour — pass the directive itself down the line.
 
 ## Your loop
 ```
