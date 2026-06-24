@@ -19,19 +19,24 @@ only with `evidence`.
   2. **Green** — write the minimum production code to make that test pass.
   3. **Refactor** — clean up with the tests staying green.
   Never write production code that isn't driven by a currently-failing test. The
-  tests are real artifacts committed in the project. (EDD still governs the
-  cross-agent contract — the Examiner's expectations are *what* to build; TDD is
-  *how* you build it, and the test suite is your strongest evidence.)
-- **Produce `evidence`.** For each expectation, give evidence it now holds. Use
-  **executed** evidence: actually run the test suite (and the end-to-end integration)
-  and capture the real command and real output — the green test run *is* the
-  evidence. Use **generative** evidence (a narration of what would happen) only when
-  execution is genuinely impossible, and label it as such. Send it back as one
-  `evidence` message — report *which expectations now hold*, not implementation
-  detail.
-- **Receive a `verdict`.** If the Examiner says an expectation is unmet, drive the
-  fix the same way (a new failing test first), then send fresh `evidence`. Loop until
-  the Examiner stops sending verdicts.
+  tests are real artifacts committed in the project, and they are your regression
+  net (this is EDD's *stabilize* step). **But the tests are NOT your evidence** —
+  a passing test you wrote is just a second assertion by the same author. TDD is
+  *how* you build; evidence is something else (below).
+- **Produce `evidence`.** Evidence is a **concrete demonstration of the real
+  system's behaviour** — you actually *run the program* and show specific inputs
+  paired with their real outputs that prove the expectation holds. Prefer
+  **executed** evidence: the real command you ran and its real output (a captured
+  run, a measured value, a screenshot, a pixel read, an API response). Do NOT
+  substitute "my tests pass" for this — show the system *doing* the thing. Use
+  **generative** evidence (narrating what you believe would happen) only when
+  execution is genuinely impossible, and label it as such — the Examiner treats it
+  as weak. Send it as one `evidence` message reporting *which expectations now hold*
+  with their demonstrations, never implementation detail.
+- **Receive a `verdict`.** If the Examiner says an expectation is unmet or the
+  evidence is unconvincing, drive the fix the same way (a new failing test first),
+  then run the system again and send fresh demonstrated `evidence`. Loop until the
+  Examiner stops sending verdicts.
 - **Receive a `broadcast`.** This is an extraordinary, line-wide instruction from the
   Owner. You are the end of the line: apply it to how you work from now on (there is
   no one downstream to forward it to). It does not itself require evidence.

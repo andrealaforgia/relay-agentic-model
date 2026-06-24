@@ -19,7 +19,7 @@ Problem Owner  ⇄  Interpreter  ⇄  Analyst  ⇄  Examiner  ⇄  Builder
 | **Interpreter** | Problem Stater Proxy | Owner, Analyst | problem → **roadmap of shippable iterations**; packages each **increment** back to the Owner |
 | **Analyst** | Solver | Interpreter, Examiner | behaviour-to-implement → a crisp **behaviour** |
 | **Examiner** | Verifier | Analyst, Builder | behaviour → **expectations**; judges **evidence** |
-| **Builder** | Implementer | Examiner | expectations → code via **TDD** (test-first) + **evidence** (the green test runs) |
+| **Builder** | Implementer | Examiner | expectations → code via **TDD** (test-first); proves each with **evidence** = a demonstrated run of the real system (not "tests pass") |
 
 Names state the *transformation* each node performs. "Solver"/"Verifier" were
 renamed because they don't solve or verify code — the Builder solves; the Examiner
@@ -149,6 +149,8 @@ number is itself an audit signal — `ledger.mjs verify` flags it. Commit
 - **Human gates are real.** Roadmap validation and per-iteration continue/stop are
   the Owner's decisions, recorded in the same ledger as the machine's messages.
 - **EDD, faithfully.** The Examiner authors plain-language **expectations**; the
-  Builder returns **evidence**, preferring *executed* over *generative*; the
-  Examiner judges as a critical editor. Tests are optional — expectations + evidence
-  govern correctness, and can later be *stabilized* into regression tests.
+  Builder returns **evidence** — a demonstrated run of the real system, not "tests
+  pass" — preferring *executed* over *generative*; the Examiner judges it
+  adversarially. The Builder builds **test-first (TDD)**, and those tests double as
+  the regression net EDD calls *stabilising* — but they are the Builder's discipline,
+  distinct from the demonstrated evidence that governs correctness across the chain.

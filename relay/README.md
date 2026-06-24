@@ -165,7 +165,7 @@ edge. What each type means and the abstraction it carries:
 | `question` | Analyst → Interpreter | The Analyst asks back up if a need is ambiguous (it does *not* guess). |
 | `behaviour` | Analyst → Examiner | The need reframed as an **observable behaviour**: an actor, an observable outcome, and boundaries — with every hint of *how* stripped out. "What must be observably true." |
 | `expectation` | Examiner → Builder | The Examiner decomposes a behaviour into a **set of precise, checkable expectations** (E1..En) — plain-language statements of exactly what must hold, including an end-to-end *integration* expectation. This is the spec the Builder satisfies. Still no "how". |
-| `evidence` | Builder → Examiner | The Builder implements **test-first (TDD: red → green → refactor)**, runs the suite, and reports **which expectations now hold, with executed evidence** — the green test runs plus the end-to-end integration run *are* that evidence. It reports *only* fulfilled expectations, never implementation detail. (EDD prefers *executed* evidence over merely *narrated* / generative.) |
+| `evidence` | Builder → Examiner | A **concrete demonstration of the real system's behaviour** — the Builder actually *runs the program* and shows specific inputs paired with their real outputs (a captured run, a measured value, a screenshot, an API response) proving each expectation holds. EDD prefers *executed* evidence (real output from a real run) over *generative* (narrating what would happen). Note: a passing test the Builder wrote is **not** evidence — that's a second assertion by the same author; the Builder must show the system *doing* the thing. It reports *which expectations now hold*, never implementation detail. |
 | `verdict` | Examiner → Builder | The Examiner judges the evidence against the expectations. If anything is unmet or unconvincing, the verdict says what still fails and the Builder iterates — **this loops until every expectation is satisfied**. |
 | `behaviour-status` | Examiner → Analyst | Once all expectations pass, the Examiner reports the behaviour as satisfied (with its evidence). |
 | `behaviour-status` | Analyst → Interpreter | The Analyst relays it upward as **"which problem was solved"** — back in the Owner's terms, never mentioning expectations, tests, or code. |
@@ -186,13 +186,22 @@ edge. What each type means and the abstraction it carries:
 
 The Examiner ⟲ Builder loop (`expectation` → `evidence` → `verdict` → …) is the heart
 of **Expectation-Driven Development**: correctness is established by stating
-expectations in plain language and proving them with real evidence, rather than by
-the Builder asserting "done." Inside that loop the Builder works **test-first (TDD)**
-— every expectation is driven by a failing automated test, and the resulting green
-test runs are the executed evidence the Examiner judges. The two compose cleanly:
-**EDD is the cross-agent contract** (what must hold, proven by evidence) and **TDD is
-how the Builder gets there**. Together, the expectations, their tests, and the
-evidence recorded in the ledger are the proof of correctness.
+expectations in plain language and proving them with **evidence** — concrete
+demonstrations of the running system's real input→output behaviour — which the
+Examiner judges adversarially, rather than by the Builder asserting "done."
+
+Keep two things separate:
+- **Evidence** is what the Builder shows the Examiner: the system actually *doing*
+  the thing (executed runs with real outputs). A passing test is **not** evidence —
+  it is a second assertion by the same author.
+- **Tests (TDD)** are *how* the Builder builds — `red → green → refactor`, no
+  production code without a failing test — and they serve as the regression net
+  (EDD calls this *stabilising* validated expectations into automated tests). They
+  protect the code over time; they do not stand in for the demonstration.
+
+So: **EDD is the cross-agent contract** (what must hold, proven by demonstrated
+evidence the Examiner judges), and **TDD is the Builder's internal discipline**
+(how it implements, plus regression safety).
 
 ## Sending and receiving
 
