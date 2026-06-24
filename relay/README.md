@@ -165,7 +165,7 @@ edge. What each type means and the abstraction it carries:
 | `question` | Analyst → Interpreter | The Analyst asks back up if a need is ambiguous (it does *not* guess). |
 | `behaviour` | Analyst → Examiner | The need reframed as an **observable behaviour**: an actor, an observable outcome, and boundaries — with every hint of *how* stripped out. "What must be observably true." |
 | `expectation` | Examiner → Builder | The Examiner decomposes a behaviour into a **set of precise, checkable expectations** (E1..En) — plain-language statements of exactly what must hold, including an end-to-end *integration* expectation. This is the spec the Builder satisfies. Still no "how". |
-| `evidence` | Builder → Examiner | The Builder writes the code, runs it, and reports **which expectations now hold, with executed evidence** — real output, runs, screenshots, measured values. It reports *only* fulfilled expectations, never implementation detail. (EDD prefers *executed* evidence over merely *narrated* / generative.) |
+| `evidence` | Builder → Examiner | The Builder implements **test-first (TDD: red → green → refactor)**, runs the suite, and reports **which expectations now hold, with executed evidence** — the green test runs plus the end-to-end integration run *are* that evidence. It reports *only* fulfilled expectations, never implementation detail. (EDD prefers *executed* evidence over merely *narrated* / generative.) |
 | `verdict` | Examiner → Builder | The Examiner judges the evidence against the expectations. If anything is unmet or unconvincing, the verdict says what still fails and the Builder iterates — **this loops until every expectation is satisfied**. |
 | `behaviour-status` | Examiner → Analyst | Once all expectations pass, the Examiner reports the behaviour as satisfied (with its evidence). |
 | `behaviour-status` | Analyst → Interpreter | The Analyst relays it upward as **"which problem was solved"** — back in the Owner's terms, never mentioning expectations, tests, or code. |
@@ -178,11 +178,21 @@ edge. What each type means and the abstraction it carries:
 | `warning` | Sentinel → any agent | A contract drift the agent should correct on its next message. |
 | `directive` | Sentinel → any agent | A corrective instruction (e.g. "restate your last message without the file names"). |
 
+**Line-wide — the extraordinary broadcast**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `broadcast` | Owner → … → Builder | An extraordinary, line-wide instruction (a global constraint, a priority shift, "stop after this behaviour"). The Owner sends it to the Interpreter, and **each agent applies it and forwards it on** to its downstream neighbour — `owner → interpreter → analyst → examiner → builder` — so it reaches every station. Unlike a behaviour, it is passed down with its intent intact, not abstracted away. The Builder, being last, simply applies it. |
+
 The Examiner ⟲ Builder loop (`expectation` → `evidence` → `verdict` → …) is the heart
 of **Expectation-Driven Development**: correctness is established by stating
 expectations in plain language and proving them with real evidence, rather than by
-the Builder asserting "done." The code itself may carry no unit tests at all — the
-expectations and their evidence, recorded in the ledger, are the proof.
+the Builder asserting "done." Inside that loop the Builder works **test-first (TDD)**
+— every expectation is driven by a failing automated test, and the resulting green
+test runs are the executed evidence the Examiner judges. The two compose cleanly:
+**EDD is the cross-agent contract** (what must hold, proven by evidence) and **TDD is
+how the Builder gets there**. Together, the expectations, their tests, and the
+evidence recorded in the ledger are the proof of correctness.
 
 ## Sending and receiving
 

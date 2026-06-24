@@ -19,7 +19,7 @@ Problem Owner  ⇄  Interpreter  ⇄  Analyst  ⇄  Examiner  ⇄  Builder
 | **Interpreter** | Problem Stater Proxy | Owner, Analyst | problem → **roadmap of shippable iterations**; packages each **increment** back to the Owner |
 | **Analyst** | Solver | Interpreter, Examiner | behaviour-to-implement → a crisp **behaviour** |
 | **Examiner** | Verifier | Analyst, Builder | behaviour → **expectations**; judges **evidence** |
-| **Builder** | Implementer | Examiner | expectations → code + **evidence** (no tests required) |
+| **Builder** | Implementer | Examiner | expectations → code via **TDD** (test-first) + **evidence** (the green test runs) |
 
 Names state the *transformation* each node performs. "Solver"/"Verifier" were
 renamed because they don't solve or verify code — the Builder solves; the Examiner
@@ -65,6 +65,11 @@ gates.
 3. **Fixed vocabulary per edge.** e.g. the Builder may only ever emit `evidence`;
    the Owner→Interpreter edge carries `problem` / `roadmap-verdict` / `feedback` /
    `decision`.
+4. **Extraordinary broadcasts.** The Owner can send a `broadcast` — a line-wide
+   instruction (a global constraint, a priority shift, "stop after this behaviour").
+   It still travels neighbour-to-neighbour: each agent applies it and relays it to
+   its downstream neighbour, so it reaches the whole chain
+   (owner → interpreter → analyst → examiner → builder).
 
 All three rules live in **`topology.json`** — the single source of truth — and are
 enforced in two places that both read it: the orchestrator's in-run `append()`

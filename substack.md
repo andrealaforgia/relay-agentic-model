@@ -69,11 +69,11 @@ The Examiner takes a behaviour and decomposes it into a **set of expectations** 
 
 It sends these to the Builder and waits for **evidence**. Then it judges. In EDD terms, the Examiner insists on *executed* evidence — real runs, real output, real measured values — over *generative* evidence, where the AI merely narrates what it believes would happen. If an expectation is unmet or the evidence is unconvincing, the Examiner returns a **verdict** saying what still fails, and the Builder iterates. This `expectation → evidence → verdict` loop repeats until every expectation is satisfied.
 
-The striking consequence, straight from EDD: **the code may carry no unit tests at all.** The expectations and their evidence — recorded permanently in the audit log — *are* the proof of correctness. The Examiner is the test oracle, and the ledger is the test report.
+EDD itself doesn't *mandate* tests — its contract is "prove the expectation with evidence," not "show a green bar." But the Relay Method goes one better: the Builder implements **test-first** (see below), so each expectation is encoded as an automated test and its passing run becomes the executed evidence. The expectations, the tests that pin them down, and the recorded evidence together *are* the proof of correctness. The Examiner is the test oracle; the ledger is the test report.
 
 ### 5. The Builder — the only one who touches code
 
-The Builder is the implementer, and the only agent that writes and runs real code. It receives expectations from the Examiner and produces **evidence** that they now hold: it builds, it runs the program, it captures screenshots and measured outputs, and it reports back **which expectations are fulfilled** — and *only* that. It is forbidden from leaking implementation detail upward; "I used a hash map keyed by cell coordinates" is a contract violation. The correct report is "E2 now holds; here is the run that shows it."
+The Builder is the implementer, and the only agent that writes and runs real code. It works **test-first**, by Test-Driven Development: for each expectation it writes a failing automated test (Red), writes the minimum code to make it pass (Green), then refactors — never writing production code that isn't driven by a failing test. It receives expectations from the Examiner and produces **evidence** that they now hold: the green test runs plus the end-to-end integration run *are* that evidence, and it reports back **which expectations are fulfilled** — and *only* that. It is forbidden from leaking implementation detail upward; "I used a hash map keyed by cell coordinates" is a contract violation. The correct report is "E2 now holds; here is the run that shows it." (EDD is the cross-agent contract — *what* must hold; TDD is *how* the Builder gets there.)
 
 The Builder talks to no one but the Examiner. It doesn't know who the Owner is or what the roadmap looks like. It knows expectations, and it knows how to produce evidence. That narrowness is its strength.
 
@@ -102,6 +102,7 @@ The message vocabulary mirrors the abstraction ladder:
 - **Builder → Examiner:** `evidence`.
 - **Examiner → Analyst → Interpreter:** `behaviour-status` (climbing back up, re-translated at each step).
 - **Sentinel → any agent:** `advisory`, `warning`, `directive`.
+- **Owner → … → Builder:** `broadcast` — an *extraordinary* message. Most messages hop one edge; a broadcast is a line-wide instruction (a global constraint, a priority shift, "stop after this behaviour") that each agent applies and relays to its downstream neighbour, so it travels the whole chain intact.
 
 ### The rhythm of one behaviour
 
@@ -140,7 +141,7 @@ The Relay Method is a bet that the path to trustworthy AI-built software is not 
 Three ideas do the heavy lifting:
 
 1. **A linear chain of single-purpose agents**, each speaking only to its neighbours, so every handoff is a clean translation across abstraction levels.
-2. **Expectation-Driven Development at the core**, so correctness is proven by plain-language expectations and executed evidence rather than asserted — sometimes with no unit tests in the code at all.
+2. **Expectation-Driven Development at the core**, so correctness is proven by plain-language expectations and executed evidence rather than asserted — with the Builder working test-first (TDD) so those tests' green runs *are* the evidence.
 3. **A file-based, append-only audit trail plus an external Sentinel**, so the whole thing is inspectable, replayable, and self-policing.
 
 The human comes out changed too: not an author hunched over a keyboard, but an editor who states problems, reviews increments, and decides. If you've ever wished you could *see* how an AI arrived at a piece of code — and trust that it actually does what it claims — the Relay Method is one concrete way to get there.
