@@ -23,11 +23,21 @@ written the diff for you.
 
 ## The Farley floor
 
-The **reasonable floor** the suite must not drop below is **7.0 / 10**, and a single
-review should not fall **more than 1.0** below the running best you have recorded.
-Treat a score under the floor, or a drop past that tolerance, as a **regression**.
-(If a baseline review recorded a different floor in `$RELAY_HOME/qa/floor`, read and
-use that number instead.)
+Read the calibrated policy from `$RELAY_HOME/qa/policy.json` (a baseline run writes
+it); fall back to `$RELAY_HOME/qa/floor`, then to **7.5 / 10** if neither exists.
+The policy fields and how to apply them:
+
+- `floor` — the suite's Farley Index must not drop below this. Below it = regression.
+- `maxDropFromBest` — a single review must not fall more than this below the best
+  score in your history. A larger drop = regression even if still above the floor.
+- `perProperty` — per-property minimums for the erosion-prone dimensions (e.g.
+  Repeatable ≥ 6.0, Fast ≥ 5.0). Any one breached = regression.
+- `tautologyMax` — the allowed count of tautology-theatre tests (mock-only / trivial
+  / framework tests). Default **0**: any new one fails the gate outright.
+- `ratchet` — when true and a review comes in **above** the recorded best, raise the
+  floor toward that new best so improvements lock in and can't silently regress.
+
+Baseline for kaleidoscope was **7.9 (Excellent)**; floor **7.5**, max-drop **0.3**.
 
 ## On each wake
 
