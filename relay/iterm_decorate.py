@@ -27,6 +27,8 @@ PALETTE = {
     "examiner":    ((235, 160, 30), "EXAMINER",    "3d2a08"),   # amber
     "builder":     ((150, 90, 220), "BUILDER",     "2a123d"),   # purple
     "sentinel":    ((220, 60, 60),  "SENTINEL",    "3d0c12"),   # red   — the auditor
+    "documenter":  ((40, 160, 235), "Documenter",  "08243d"),   # blue    — the docs observer
+    "qa":          ((236, 72, 153), "QA",          "3d0c2e"),   # magenta — the test-design reviewer
 }
 
 

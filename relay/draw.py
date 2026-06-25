@@ -21,10 +21,10 @@ import pathlib
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 
 # Fixed column order for the board, left to right.
-LANES = ["owner", "interpreter", "analyst", "examiner", "builder", "sentinel"]
+LANES = ["owner", "interpreter", "analyst", "examiner", "builder", "qa", "sentinel"]
 ACCENTS = {
     "owner": "#6b7280", "interpreter": "#2563eb", "analyst": "#7c3aed",
-    "examiner": "#0d9488", "builder": "#d97706", "sentinel": "#dc2626",
+    "examiner": "#0d9488", "builder": "#d97706", "qa": "#db2777", "sentinel": "#dc2626",
 }
 
 
