@@ -2,15 +2,22 @@
 
 A five-role relay where a human's problem is sliced into a validated roadmap and
 delivered one potentially shippable increment at a time, through
-[Expectation-Driven Development](https://a4al6a.substack.com/p/expectation-driven-development-a).
-Each agent talks only to its immediate neighbours, and every message — including
-the human's gate decisions — is recorded in an append-only ledger you can audit.
+[Expectation-Driven Development](https://a4al6a.substack.com/p/expectation-driven-development-a)
+— with two out-of-chain observers (a **Sentinel** and a **QA** reviewer) watching
+alongside. Each chain agent talks only to its immediate neighbours, and every message
+— including the human's gate decisions — is recorded in an append-only ledger you can
+audit.
 
 ## The chain
 
 ```mermaid
 flowchart LR
     O["Problem Owner<br/>(human)"] <--> I[Interpreter] <--> A[Analyst] <--> E[Examiner] <--> B[Builder]
+    S(["Sentinel<br/>comms auditor"]) -. "advisory / warning / directive" .-> I
+    S -.-> A
+    S -.-> E
+    S -.-> B
+    Q(["QA<br/>Farley test-design"]) -. "test-review / warning" .-> B
 ```
 
 | Role | Was called | Talks to | Transforms… |
@@ -18,12 +25,36 @@ flowchart LR
 | **Problem Owner** | Problem Stater | Interpreter | a problem; validates the roadmap; gives feedback + continue/stop each iteration (the human) |
 | **Interpreter** | Problem Stater Proxy | Owner, Analyst | problem → **roadmap of shippable iterations**; packages each **increment** back to the Owner |
 | **Analyst** | Solver | Interpreter, Examiner | behaviour-to-implement → a crisp **behaviour** |
-| **Examiner** | Verifier | Analyst, Builder | behaviour → **expectations**; judges **evidence** |
+| **Examiner** | Verifier | Analyst, Builder | behaviour → **expectations**; judges **evidence**; persists each satisfied behaviour as a committed **BDD feature** |
 | **Builder** | Implementer | Examiner | expectations → code via **TDD** (test-first); proves each with **evidence** = a demonstrated run of the real system (not "tests pass") |
 
 Names state the *transformation* each node performs. "Solver"/"Verifier" were
 renamed because they don't solve or verify code — the Builder solves; the Examiner
 sets expectations and judges evidence.
+
+### Observers (outside the chain)
+
+Two agents run alongside the relay but are not links in it — they only ever speak
+*one-way*, and no agent replies:
+
+- **Sentinel** — the communication auditor. Reads the whole ledger and may send
+  `advisory` / `warning` / `directive` to any agent when a message drifts off-contract
+  (e.g. the Builder leaking implementation detail up toward the Examiner).
+- **QA** — the test-design reviewer. On new commits it scores the Builder's changed
+  tests with the **Farley Index** (Dave Farley's 8 Properties of Good Tests) and sends
+  the Builder a `test-review`, or a `warning` when quality drops below a calibrated floor.
+
+## Two ways to run it
+
+The same chain, topology, and ledger back two execution surfaces:
+
+- **Workflow orchestrator** (`orchestrator.workflow.js` + `ledger.mjs`) — headless,
+  run-by-run; the Owner's gates happen conversationally between runs. This is what the
+  sections below describe.
+- **iTerm relay swarm** (`relay/`) — each agent is a long-lived Claude session in its
+  own iTerm window, and messages travel as filesystem-mailbox files a dispatcher
+  delivers; the Sentinel and QA observers run as their own windows. Best when you want
+  to watch the agents work live. See [`relay/README.md`](relay/README.md).
 
 ## How an engagement runs
 
@@ -61,8 +92,12 @@ gates.
    It still travels neighbour-to-neighbour: each agent applies it and relays it to
    its downstream neighbour, so it reaches the whole chain
    (owner → interpreter → analyst → examiner → builder).
+5. **Out-of-chain observers.** The Sentinel and QA sit outside the chain and speak
+   one-way only: the Sentinel may message any agent (`sentinel>*`), and QA messages
+   the Builder (`qa>builder`). These edges are listed in `topology.json` beside the
+   chain edges, so their messages validate too.
 
-All three rules live in **`topology.json`** — the single source of truth — and are
+These rules live in **`topology.json`** — the single source of truth — and are
 enforced in two places that both read it: the orchestrator's in-run `append()`
 (rules passed in via `args.topology`) and `ledger.mjs` on persistence.
 
@@ -75,6 +110,7 @@ enforced in two places that both read it: the orchestrator's in-run `append()`
 | `ledger.mjs` | Persistence chokepoint + auditor CLI (`count` / `append` / `append-batch` / `verify` / `show`). Runnable with `node`. |
 | `schema/message.schema.json` | The ledger wire format (one message per line). |
 | `ledger/ledger.jsonl` | The audit trail for one engagement. |
+| `relay/` | The live **iTerm relay swarm** — one Claude session per role in its own window, filesystem-mailbox delivery, plus the Sentinel + QA observers. See [`relay/README.md`](relay/README.md). |
 
 `orchestrator.workflow.js` runs inside Claude's workflow engine (which provides
 `agent()`, `log()`, …) — run it by asking Claude, not with `node`. `ledger.mjs` is
@@ -142,6 +178,9 @@ number is itself an audit signal — `ledger.mjs verify` flags it. Commit
 - **EDD, faithfully.** The Examiner authors plain-language **expectations**; the
   Builder returns **evidence** — a demonstrated run of the real system, not "tests
   pass" — preferring *executed* over *generative*; the Examiner judges it
-  adversarially. The Builder builds **test-first (TDD)**, and those tests double as
-  the regression net EDD calls *stabilising* — but they are the Builder's discipline,
-  distinct from the demonstrated evidence that governs correctness across the chain.
+  adversarially and consolidates each satisfied behaviour into a committed **BDD
+  feature** (Feature = behaviour, Scenario = expectation + the evidence that proved
+  it), so the proof lives with the code. The Builder builds **test-first (TDD)**, and
+  those tests double as the regression net EDD calls *stabilising* — but they are the
+  Builder's discipline, distinct from the demonstrated evidence that governs
+  correctness across the chain.
