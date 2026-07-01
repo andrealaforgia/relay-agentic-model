@@ -8,9 +8,9 @@ the human's gate decisions — is recorded in an append-only ledger you can audi
 
 ## The chain
 
-```
-Problem Owner  ⇄  Interpreter  ⇄  Analyst  ⇄  Examiner  ⇄  Builder
-   (human)
+```mermaid
+flowchart LR
+    O["Problem Owner<br/>(human)"] <--> I[Interpreter] <--> A[Analyst] <--> E[Examiner] <--> B[Builder]
 ```
 
 | Role | Was called | Talks to | Transforms… |
@@ -32,25 +32,16 @@ continue?**. A headless workflow run can't pause for a human, so the engagement 
 a sequence of workflow runs stitched together by those gates, which happen
 conversationally between runs:
 
-```
-Owner states problem
-        │
-   ┌────▼──────────────────────────────────┐
-   │ RUN  mode:"roadmap"                     │  Interpreter slices the problem
-   │   → roadmap of shippable iterations     │  into ordered vertical slices
-   └────┬──────────────────────────────────┘
-        │  ◇ GATE 1: Owner validates roadmap ◇        approve → proceed
-        │            (revise → re-run roadmap mode     revise  → loop with feedback
-        │             with ownerFeedback)
-   ┌────▼──────────────────────────────────┐
-   │ RUN  mode:"iteration" index:k           │  the relay: Interpreter → Analyst
-   │   relay → potentially shippable          │  → Examiner ⇄ Builder (EDD loop)
-   │   increment + "continue?"                │  → one shippable increment
-   └────┬──────────────────────────────────┘
-        │  ◇ GATE 2: Owner feedback + continue? ◇      continue → next iteration
-        │            (feedback can reshape the          stop     → engagement ends
-        │             remaining roadmap → re-plan)
-       ⟳ next iteration, or done
+```mermaid
+flowchart TD
+    P([Owner states problem]) --> R["RUN mode: roadmap<br/>Interpreter slices the problem into<br/>ordered, shippable vertical slices"]
+    R --> G1{"GATE 1<br/>Owner validates the roadmap"}
+    G1 -->|"revise — re-run roadmap mode with ownerFeedback"| R
+    G1 -->|approve| IT["RUN mode: iteration k<br/>relay: Interpreter → Analyst → Examiner ⇄ Builder<br/>(EDD loop) → one shippable increment + continue?"]
+    IT --> G2{"GATE 2<br/>Owner feedback + continue?"}
+    G2 -->|"continue — next iteration k+1"| IT
+    G2 -->|"feedback reshapes the remaining roadmap → re-plan"| R
+    G2 -->|stop| DONE([Engagement ends])
 ```
 
 One **ledger spans the whole engagement** — every run appends to the same

@@ -1,17 +1,29 @@
 # Filesystem-mailbox relay
 
-Four agents, each in its own Claude session on this machine, talking only to their
-neighbours through plain files. No server, no broker — every message is a file you
-can `ls`, `cat`, and replay. A stuck chain is just a message sitting in an inbox.
+Four agents form the chain — each in its own Claude session on this machine, talking
+only to their neighbours through plain files — plus two out-of-chain observers (a
+**Sentinel** and a **QA** reviewer) that watch alongside. No server, no broker —
+every message is a file you can `ls`, `cat`, and replay. A stuck chain is just a
+message sitting in an inbox.
 
-```
-Owner (human)  ⇄  Interpreter  ⇄  Analyst  ⇄  Examiner  ⇄  Builder
-└── live session ──┘            └──────── mailbox files (relay) ────────┘
+```mermaid
+flowchart LR
+    O["Owner<br/>(human)"] <-->|live session| I[Interpreter]
+    I <-->|mailbox| A[Analyst]
+    A <-->|mailbox| E[Examiner]
+    E <-->|mailbox| B[Builder]
+    S(["Sentinel<br/>comms auditor"]) -. "advisory / warning / directive" .-> I
+    S -.-> A
+    S -.-> E
+    S -.-> B
+    Q(["QA<br/>Farley test-design"]) -. "test-review / warning" .-> B
 ```
 
 Only the `owner↔interpreter` edge is a live conversation (the human types in the
 Interpreter's session). All three agent-to-agent edges — Interpreter↔Analyst,
-Analyst↔Examiner, Examiner↔Builder — go through mailbox files via the relay.
+Analyst↔Examiner, Examiner↔Builder — go through mailbox files via the relay. The
+Sentinel and QA stand outside the chain and speak one-way only (dotted): no agent
+replies to them.
 
 ## Files
 
@@ -27,7 +39,9 @@ relay/
   iterm_launch.py        open the swarm as separate, tiled iTerm windows
   iterm_dispatch.py      push dispatcher — wakes a window when it has mail
   iterm_sentinel.py      trigger that wakes the Sentinel to audit
+  iterm_qa.py            trigger that wakes QA to score test design (Farley Index)
   iterm_decorate.py      give each window a role badge + background colour
+  draw.py                render the ledger as a swimlane comms board (Communication Drawer)
   iterm/windows.json     role -> iTerm session UUID (written by the launcher)
   docwatch.py            optional: wakes a Documenter from git history
 ```
@@ -51,7 +65,10 @@ python3 relay/iterm_dispatch.py --home <project-dir>/.relay &
 # 3. the Sentinel's audit trigger (leave running)
 python3 relay/iterm_sentinel.py --home <project-dir>/.relay &
 
-# 4. (optional) badge + per-role background colour on the live windows
+# 4. the QA reviewer's trigger — wakes QA on new commits to score test design (leave running)
+python3 relay/iterm_qa.py --home <project-dir>/.relay &
+
+# 5. (optional) badge + per-role background colour on the live windows
 python3 relay/iterm_decorate.py --home <project-dir>/.relay
 ```
 
@@ -67,7 +84,7 @@ window that still has mail, so a dropped wake self-heals.
 
 ### Resume after a restart / crash
 
-All state is on disk, so a reboot only loses the *processes*. Re-run the same four
+All state is on disk, so a reboot only loses the *processes*. Re-run the same launch
 steps — `iterm_launch.py`'s init is idempotent (keeps the ledger and mailboxes), the
 agents re-read their playbooks, and the dispatcher wakes whoever still has pending
 mail. The swarm continues from exactly where it stopped. (`iterm_decorate.py` is
@@ -107,30 +124,41 @@ speaks the language of its own edge (the Sentinel audits exactly this — see be
 
 Going down the chain, the same idea is progressively sharpened:
 
-```
-Owner        a problem / a need, in plain words
-  │
-Interpreter  a behaviour to implement   (a need, in the Owner's terms)
-  │
-Analyst      a behaviour                (an observable outcome — actor + effect + bounds, no solution)
-  │
-Examiner     expectations E1..En        (precise, checkable statements of what must hold)
-  │
-Builder      code + evidence            (it built it, and proved each expectation with real output)
+```mermaid
+flowchart TD
+    O["<b>Owner</b> · a problem / a need, in plain words"]
+    I["<b>Interpreter</b> · a behaviour to implement<br/>(a need, in the Owner's terms)"]
+    A["<b>Analyst</b> · a behaviour<br/>(an observable outcome — actor + effect + bounds, no solution)"]
+    E["<b>Examiner</b> · expectations E1..En<br/>(precise, checkable statements of what must hold)"]
+    B["<b>Builder</b> · code + evidence<br/>(it built it, and proved each expectation with real output)"]
+    O --> I --> A --> E --> B
 ```
 
 ### One behaviour, end to end
 
+```mermaid
+sequenceDiagram
+    participant O as Owner
+    participant I as Interpreter
+    participant A as Analyst
+    participant E as Examiner
+    participant B as Builder
+    I->>A: behaviour-to-implement
+    A->>E: behaviour
+    E->>B: expectation (set E1..En, incl. an integration expectation)
+    loop until every expectation is satisfied
+        B->>E: evidence
+        E-->>B: verdict (if unmet)
+    end
+    E->>A: behaviour-status (satisfied)
+    A->>I: behaviour-status
+    I->>O: increment + continue?
 ```
-Interpreter --behaviour-to-implement--> Analyst
-Analyst     --behaviour-------------->   Examiner
-Examiner    --expectation------------>   Builder    (a set E1..En, incl. an integration expectation)
-Builder     --evidence--------------->   Examiner
-Examiner    --verdict (if unmet)----->   Builder    ⟲ loop until every expectation is satisfied
-Examiner    --behaviour-status------->   Analyst
-Analyst     --behaviour-status------->   Interpreter
-Interpreter --increment + continue?-->   Owner
-```
+
+When every expectation is satisfied, the Examiner consolidates the behaviour into a
+**committed Gherkin `.feature` file** in the project (Feature = the behaviour, one
+Scenario per expectation, each annotated with the real-system evidence that proved
+it) before it reports `behaviour-status` — so the proof lives with the code.
 
 Before any of that, there is a **setup phase** between the Owner and the Interpreter
 (a live conversation, logged to the ledger): the Owner states the problem, the
@@ -177,6 +205,14 @@ edge. What each type means and the abstraction it carries:
 | `advisory` | Sentinel → any agent | A non-blocking heads-up that a message is drifting off-contract (e.g. starting to leak implementation detail). |
 | `warning` | Sentinel → any agent | A contract drift the agent should correct on its next message. |
 | `directive` | Sentinel → any agent | A corrective instruction (e.g. "restate your last message without the file names"). |
+
+**Out-of-band — QA (test-design reviewer, outside the chain)**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `test-review` | QA → Builder | The tests' **Farley Index** (Dave Farley's 8 Properties of Good Tests) with a per-property breakdown and the top fixes, for the tests the Builder just changed. |
+| `warning` | QA → Builder | Test-design quality dropped below the calibrated floor — which properties regressed, in which tests, and how to recover. |
+| `advisory` | QA → Builder | Production code changed with no test changes (nothing to score), or a minor note. |
 
 **Line-wide — the extraordinary broadcast**
 
@@ -231,10 +267,10 @@ independent record. Commit `ledger.jsonl` per engagement for tamper-evident hist
 ## Observers (outside the chain)
 
 These run alongside the swarm but are not links in the chain. The Communication
-Drawer and Documenter only read. The **Sentinel** reads the whole ledger and —
-via the `sentinel>*` edges in `topology.json` — may also send one-way
-`advisory`/`warning`/`directive` messages to any agent to keep communication
-on-contract (no agent replies to it).
+Drawer and Documenter only read. Two observers also *speak* — one-way — to keep the
+chain honest: the **Sentinel** may send `advisory`/`warning`/`directive` to any agent
+(the `sentinel>*` edges in `topology.json`), and **QA** sends `test-review`/`warning`
+to the Builder (the `qa>builder` edge). No agent replies to either.
 
 - **Sentinel** (`agents/sentinel.md` + `iterm_sentinel.py`) — the Communication
   Auditor. Periodically audits the ledger for per-edge contract breaches (e.g. the
@@ -242,6 +278,14 @@ on-contract (no agent replies to it).
   `<RELAY_HOME>/audit/`, and may advise the offending agent directly
   (`sentinel>*` edges). Its window is opened by `iterm_launch.py`; wake it on a
   schedule with `python3 relay/iterm_sentinel.py --home <project>/.relay`.
+- **QA** (`agents/qa.md` + `iterm_qa.py`) — the Test-Design Reviewer. Whenever the
+  project has new commits, it reads the staged diff, scores the changed tests'
+  **Farley Index** (Dave Farley's 8 Properties of Good Tests) with the
+  `alf-test-design-reviewer` agent, and sends the Builder a `test-review` — or a
+  `warning` if quality drops below the calibrated floor in `<RELAY_HOME>/qa/policy.json`
+  — over the one-way `qa>builder` edge; the Builder does not reply. Its window is
+  opened by `iterm_launch.py`; wake it on a schedule with
+  `python3 relay/iterm_qa.py --home <project>/.relay`.
 - **Communication Drawer** (`draw.py`) — renders the ledger as a Kaleidoscope-style
   swimlane board (one lane per agent, expandable message cards, direction arrows).
   Deterministic; re-run anytime:
