@@ -22,7 +22,10 @@ import sys
 import time
 
 TOOL_DIR = pathlib.Path(__file__).resolve().parent
-ROLES = ["interpreter", "analyst", "examiner", "builder", "sentinel"]
+# The relay chain + its two out-of-chain observers (sentinel = comms auditor,
+# qa = test-design reviewer). Both are mapped in windows.json so their drivers
+# (iterm_sentinel.py / iterm_qa.py) can wake the right session by UUID.
+ROLES = ["interpreter", "analyst", "examiner", "builder", "sentinel", "qa"]
 CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions")
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
@@ -158,6 +161,12 @@ def main():
             kick = ("Read $RELAY_AGENTS/sentinel.md and act as the Sentinel (Communication "
                     "Auditor) for this swarm. Your data root is $RELAY_HOME. When you receive "
                     "an 'audit time' message, audit new ledger messages per the playbook, then stop.")
+        elif r == "qa":
+            kick = ("Read $RELAY_AGENTS/qa.md and act as the QA test-design reviewer for this "
+                    "project — an observer outside the relay chain (you receive no relay mail). "
+                    "Your data root is $RELAY_HOME. When you receive a 'QA time' message, review "
+                    "the staged diff's tests per the playbook, send the result to the builder over "
+                    "qa>builder, then stop.")
         else:
             kick = f"Read $RELAY_AGENTS/{r}.md and act as the {r} for this project. {base}"
         write_to_window(win_ids[r], kick)
