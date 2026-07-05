@@ -41,8 +41,14 @@ COOLDOWN = 12.0   # seconds after a wake before we'll re-wake the same idle role
 
 
 def osa(script: str) -> str:
-    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=20)
-    return r.stdout
+    # Never let a transient AppleScript hang kill the watcher: a timed-out or failed
+    # osascript call returns "" so the caller skips this tick and retries next loop.
+    # "" reads as an unknown/busy session (not a gone one), so no false "session GONE".
+    try:
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=20)
+        return r.stdout
+    except Exception:
+        return ""
 
 
 def esc(s: str) -> str:
