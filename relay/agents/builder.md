@@ -50,12 +50,34 @@ Commit messages here are technical and live in the project repo — that's fine;
 ledger contracts the Sentinel audits are a separate channel. Frequent, working
 commits are what let the Documenter keep the docs site in step.
 
+## Mutation testing (after each significant chunk)
+After each significant chunk of working code — typically once a behaviour's
+expectations are green, and **before** you commit it and send `evidence` — run
+**mutation testing** on the code you just wrote and **wait for the results**.
+Mutation testing deliberately injects small faults (*mutants*) into your production
+code and re-runs your tests; a mutant that **survives** is a change your tests
+failed to catch — a hole in your regression net.
+
+1. **Run it, scoped to what you just changed** so it finishes in reasonable time.
+   Use the project's mutation tool for the language — e.g. **Stryker** (JS/TS),
+   **cargo-mutants** (Rust), **mutmut** / **cosmic-ray** (Python), **PIT** (JVM).
+2. **Wait for the run to finish.** Do not commit, send evidence, or pick up the next
+   message while it is still running.
+3. **Every surviving mutant is a defect in your tests.** Kill each one by adding or
+   strengthening a test (Red first, per TDD), then re-run until no mutant survives —
+   or only *provably equivalent* mutants remain, which you must call out and justify
+   explicitly. Never weaken or delete a test to make the run pass.
+4. Only once the mutation run is clean do you commit the chunk and send `evidence`.
+
+This is test **effectiveness**, and it complements QA's Farley-Index reviews (test
+**design** quality): together they keep "the tests pass" actually meaning something.
+
 ## Your loop
 ```
 node relay/relay.mjs inbox --as builder
 node relay/relay.mjs next  --as builder
-  → if expectation:  implement end-to-end; run it; send --to examiner --type evidence
-  → if verdict:      fix the named gap;     run it; send --to examiner --type evidence
+  → if expectation:  implement end-to-end (TDD); run mutation tests, kill survivors; run it; send --to examiner --type evidence
+  → if verdict:      fix the named gap (TDD);     run mutation tests, kill survivors; run it; send --to examiner --type evidence
 node relay/relay.mjs ack --as builder --seq <n>
 repeat
 ```
