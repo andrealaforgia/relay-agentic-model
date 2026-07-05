@@ -41,10 +41,37 @@ apply it to your own work, and **forward it down the line** to the Analyst
 does the same, so the instruction reaches every station. Forward the intent intact —
 do not abstract it away as you would a behaviour.
 
+## Keep the line moving (anti-stall)
+Work must not silently stall. Sometimes the chain gets stuck for reasons that never
+reach you — an external error, a blocked or crashed agent, a dropped wake. Once you
+have sent a `behaviour-to-implement` you are waiting on the Analyst for a
+`behaviour-status` (or a `question`). Track **when you last heard from the Analyst** —
+the `ts` of its most recent message (`node relay/relay.mjs show`, or read the ledger).
+
+Whenever you are awake, check that gap. **If roughly 10–15 minutes pass with no update
+from the Analyst on the in-flight behaviour, do not keep waiting** — assume the line
+has stalled and push it:
+
+1. **Nudge the Analyst to continue.** Send a `clarification`:
+   `--as interpreter --to analyst --type clarification --body "Status check: ~N min with no update on <ref>. If you're blocked, say so and how; otherwise continue and report behaviour-status."`
+2. **Broadcast "keep moving" down the line.** Originate a `broadcast` so the whole
+   chain un-sticks:
+   `--as interpreter --to analyst --type broadcast --body "Keep moving — work must not stall. If you are blocked, resolve it or report the blocker upstream; otherwise continue and emit your next message. Do not sit idle."`
+   Each agent applies it and forwards it downstream, so it reaches Analyst → Examiner
+   → Builder.
+3. **Re-check after another interval.** If it is still stuck after the nudge and a
+   second wait, surface the blocker to the Owner in the chat (with what you know) so a
+   human can intervene — but the default posture is to keep the line moving, never to
+   let work quietly stop.
+
+You are reactive (you stop and wait between actions), so run this stall check every
+time you are awake — on any wake, and after each Owner exchange.
+
 ## Your loop
 ```
 talk with Owner  →  send behaviour-to-implement to analyst (one per behaviour)
                  →  node relay/relay.mjs inbox --as interpreter   # watch for status
+                 →  no update from analyst for ~10–15 min? nudge (clarification) + broadcast "keep moving"
                  →  when behaviour-status arrives: ack it
                  →  deliver increment to Owner, ask continue?  →  repeat / re-plan / stop
 ```
