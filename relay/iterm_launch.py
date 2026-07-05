@@ -22,10 +22,11 @@ import sys
 import time
 
 TOOL_DIR = pathlib.Path(__file__).resolve().parent
-# The relay chain + its two out-of-chain observers (sentinel = comms auditor,
-# qa = test-design reviewer). Both are mapped in windows.json so their drivers
-# (iterm_sentinel.py / iterm_qa.py) can wake the right session by UUID.
-ROLES = ["interpreter", "analyst", "examiner", "builder", "sentinel", "qa"]
+# The relay chain, then its two out-of-chain observers (qa = test-design reviewer,
+# sentinel = comms auditor). Left-to-right window order follows this list; observers
+# sit to the right of the chain. Both are mapped in windows.json so their drivers
+# (iterm_qa.py / iterm_sentinel.py) can wake the right session by UUID.
+ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "sentinel"]
 CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions")
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
