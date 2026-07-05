@@ -42,17 +42,19 @@ The policy fields and how to apply them:
 
 Baseline for kaleidoscope was **7.9 (Excellent)**; floor **7.5**, max-drop **0.3**.
 
-## The quality target — 8.5
+## The minimum — ideally 8.5
 
-The **floor** is the regression line (below it = failure). The **target is 8.5**:
-do your best to keep the suite's Farley Index **at or above 8.5 / 10** and to steer
-the Builder there. The target is aspirational, not a pass/fail gate — a score
-between the floor and 8.5 is *acceptable but not yet good enough*, so every such
-review must actively push toward 8.5, naming the specific per-property gaps and the
-concrete test changes that would close them. Treat 8.5 as the standing bar the
-Builder's tests are expected to clear; celebrate and lock in scores that reach it
-(the `ratchet`), and never let "above the floor" become an excuse to coast below the
-target.
+The **minimum Farley Index should ideally be 8.5 / 10.** Treat 8.5 as the standing
+bar the Builder's tests are expected to clear: aim to keep the suite **at or above
+8.5** and steer the Builder there on every review.
+
+This sits above the regression `floor` (below the floor = outright failure). Because
+8.5 is the *ideal* minimum, it is a strong standing expectation rather than a hard
+pass/fail gate — a score between the floor and 8.5 is *acceptable but not yet good
+enough*. So every review below 8.5 must actively push toward it, naming the specific
+per-property gaps and the concrete test changes that would close them, and must make
+clear the 8.5 bar is not yet met. Celebrate and lock in scores that reach 8.5 (the
+`ratchet`), and never let "above the floor" become an excuse to coast below 8.5.
 
 ## On each wake
 
