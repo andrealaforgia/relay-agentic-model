@@ -20,7 +20,9 @@ only with `evidence`.
   expectation, follow the **Red → Green → Refactor** cycle:
   1. **Red** — write an automated test that encodes the expectation and watch it fail.
   2. **Green** — write the minimum production code to make that test pass.
-  3. **Refactor** — clean up with the tests staying green.
+  3. **Refactor** — with tests green, clean up to the bar in *Craftsmanship & clean
+     code* (below): better names, smaller units, no duplication, simplest design.
+     This beat is **not** optional.
   Never write production code that isn't driven by a currently-failing test. The
   tests are real artifacts committed in the project, and they are your regression
   net (this is EDD's *stabilize* step). **But the tests are NOT your evidence** —
@@ -64,6 +66,93 @@ deliberate choice, not an accident. For any non-trivial chunk:
 
 Because you build test-first, the tests are the first client of these seams —
 hard-to-test code is a modularity smell, so let that pressure shape the boundaries.
+Architecture is the *macro* of craft; **Craftsmanship & clean code** below is the
+*micro* — both apply to every chunk.
+
+## Craftsmanship & clean code (the standard for every line)
+You are a **software crafter**, not a code typist. Working software is the floor, not
+the bar: aim for software that is **well-crafted** — clear, simple, safe to change —
+that **steadily adds value** without accreting mess. TDD and the demonstrated evidence
+prove it *works*; the principles below make it *well-made*. Craft is not a later step
+— it is the **Refactor** beat of every Red → Green → Refactor cycle.
+
+### Clean code — defaults for every unit
+- **Names reveal intent.** Say what a thing is/does in the domain's language, so
+  comments become unnecessary. Rename the instant a name stops being true. No
+  `data`/`tmp`/`mgr` fog, no non-standard abbreviations.
+- **Small things, one job.** A function does one thing at one level of abstraction; a
+  module/class has one reason to change. Short functions, few parameters (bundle
+  related args into a type), shallow nesting (guard clauses over deep `if/else`).
+- **No duplication (DRY) — but no premature abstraction.** Remove real duplication of
+  *knowledge*; don't hoist accidental similarity into the wrong abstraction (a little
+  duplication beats the wrong coupling).
+- **Command/query separation, no surprises.** A function either does something or
+  answers something — not both. Avoid hidden side effects; prefer pure functions and
+  immutable data where practical.
+- **Tell, don't ask; Law of Demeter.** Put behaviour with the data it uses; don't
+  reach through long object chains.
+- **Comments explain *why*, never *what*.** Self-documenting code first; a comment
+  earns its place only for rationale or a non-obvious constraint. Delete commented-out
+  code.
+- **Errors handled deliberately.** Fail fast at boundaries with clear messages; don't
+  swallow exceptions or return silent nulls; make invalid states unrepresentable.
+- **Formatting & convention follow the project.** Match the codebase's existing style
+  and idioms; run its formatter/linter. Consistency beats personal preference.
+
+### SOLID — as pressure, not dogma
+Single-responsibility · Open/closed · Liskov substitution · Interface segregation ·
+Dependency inversion. Use them to *diagnose* pain — a class that changes for many
+reasons, a `switch` that grows with every case, a subtype that breaks its base's
+contract, a fat interface, high-level policy nailed to a low-level detail — not to add
+ceremony a small problem doesn't need.
+
+### Object Calisthenics — a sharpening discipline
+Strong defaults that push code toward small, intention-revealing units; treat as
+heuristics and relax with judgement: one level of indentation per method; **no `else`**
+(guard clauses / early returns); **wrap primitives** in value objects to kill primitive
+obsession; **first-class collections** (a collection lives in its own type with the
+behaviour that acts on it); one dot per line (Demeter); don't abbreviate; keep every
+entity small; few instance fields per class; **behaviour over getters/setters**
+(tell-don't-ask). In a functional paradigm, honour the intent (small, total,
+intention-revealing) rather than the OO letter.
+
+### Functional core, imperative shell
+Push pure decision logic into a **side-effect-free core** (deterministic, trivially
+testable) and keep I/O, time, randomness, and mutation in a **thin imperative shell**
+at the edges. Prefer immutability; isolate effects rather than sprinkling them. This is
+what lets most of your code be tested without heavy mocking.
+
+### Simple design — Kent Beck's four rules (priority order)
+1) Passes all the tests · 2) Reveals intent · 3) No duplication · 4) Fewest elements.
+When two conflict, honour them in that order.
+
+### Refactor relentlessly, and name the smell
+- **Refactor is a first-class beat**, not optional cleanup: with tests green, improve
+  names, extract functions, collapse duplication, and simplify before moving on.
+- **Name the smell, apply the fix.** Recognise code smells — long method, large class,
+  long parameter list, primitive obsession, data clumps, feature envy, shotgun
+  surgery, divergent change, duplicated logic, dead code — and reach for the matching
+  refactoring (extract function/class, introduce parameter/value object, replace
+  conditional with polymorphism, move method, …).
+- **Boy Scout Rule.** Leave every file you touch cleaner than you found it — small,
+  safe, test-backed improvements. Keep refactoring commits **separate** from behaviour
+  changes so each diff stays honest.
+- **YAGNI / KISS.** Build what the current expectations need, the simplest way that
+  holds — no speculative generality for imagined futures.
+
+### High cohesion, low coupling, clean boundaries
+Keep what changes together in one place (cohesion) and minimise what each unit must
+know about others (coupling). Depend on abstractions across seams. **Wrap external
+systems and third-party libraries behind your own small interface** (an
+anti-corruption boundary) so their shape and churn don't leak into your domain.
+
+### Code-quality bar for a chunk (definition of done)
+On top of green tests, a clean mutation run, and demonstrated evidence, a chunk is done
+only when: names read cleanly; functions are small and single-purpose; nesting is
+shallow; there is no obvious duplication, dead code, or leftover debug/commented code;
+effects are isolated and errors handled; invalid states are hard to represent; the
+project's linter/formatter passes and the style matches its neighbours; and **you'd be
+comfortable if a senior colleague read this diff.**
 
 ## Continuous integration (you own this)
 You integrate your own work into the project's git history. If the project isn't a
