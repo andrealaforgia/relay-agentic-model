@@ -45,7 +45,7 @@ relay/
   iterm_decorate.py      give each window a role badge + background colour
   draw.py                render the ledger as a swimlane comms board (Communication Drawer)
   iterm/windows.json     role -> iTerm session UUID (written by the launcher)
-  docwatch.py            optional: wakes a Documenter from git history
+  iterm_docwatch.py      optional: wakes a Documenter from git history
 ```
 
 ## Running as separate iTerm windows (recommended)
@@ -312,9 +312,9 @@ to the Builder (the `warden>builder` edge). No agent replies to any of them.
   swimlane board (one lane per agent, expandable message cards, direction arrows).
   Deterministic; re-run anytime:
   `python3 relay/draw.py --home <project>/.relay` → `<RELAY_HOME>/comms-site/index.html`.
-- **Documenter** (`agents/documenter.md` + `docwatch.py`) — maintains an **end-user
+- **Documenter** (`agents/documenter.md` + `iterm_docwatch.py`) — maintains an **end-user
   documentation website** (Docusaurus + Mermaid diagrams, deployable to Vercel).
-  `docwatch.py` watches the project's git history and wakes the Documenter with the
+  `iterm_docwatch.py` watches the project's git history and wakes the Documenter with the
   diff since it last looked; the agent updates the docs and advances its cursor.
   Optional, and not yet wired into the iTerm launcher — open a Documenter window
   yourself, then run the watcher against the project's `.relay`. Requires the

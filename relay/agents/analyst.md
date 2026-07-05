@@ -36,7 +36,7 @@ demand. If you ever stall, the unprocessed message is sitting in your inbox — 
 re-run the loop.
 
 ## Relay CLI
-When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+When launched by `iterm_launch.py`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
 Running by hand from the model repo, it's `node relay/relay.mjs`.
 
 ## Commands

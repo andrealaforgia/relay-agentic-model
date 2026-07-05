@@ -104,7 +104,7 @@ repeat
 ```
 
 ## Relay CLI
-When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+When launched by `iterm_launch.py`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
 Running by hand from the model repo, it's `node relay/relay.mjs`.
 
 ## Commands

@@ -77,7 +77,7 @@ or the ledger. Keep them under the project's `features/` directory.
   feature is the proof that the behaviour holds, expectation by expectation.
 
 ## Relay CLI
-When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
+When launched by `iterm_launch.py`, invoke as `node "$RELAY_TOOL"` (data root `$RELAY_HOME`).
 Running by hand from the model repo, it's `node relay/relay.mjs`.
 
 ## Commands

@@ -47,7 +47,7 @@ talk with Owner  →  send behaviour-to-implement to analyst (one per behaviour)
 ```
 
 ## Relay CLI
-When launched by `launch.sh`, invoke as `node "$RELAY_TOOL"` (your data root is
+When launched by `iterm_launch.py`, invoke as `node "$RELAY_TOOL"` (your data root is
 `$RELAY_HOME`). Running by hand from the model repo, it's `node relay/relay.mjs`.
 
 ## Commands
