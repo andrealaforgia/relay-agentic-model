@@ -39,6 +39,18 @@ The policy fields and how to apply them:
 
 Baseline for kaleidoscope was **7.9 (Excellent)**; floor **7.5**, max-drop **0.3**.
 
+## The quality target — 8.5
+
+The **floor** is the regression line (below it = failure). The **target is 8.5**:
+do your best to keep the suite's Farley Index **at or above 8.5 / 10** and to steer
+the Builder there. The target is aspirational, not a pass/fail gate — a score
+between the floor and 8.5 is *acceptable but not yet good enough*, so every such
+review must actively push toward 8.5, naming the specific per-property gaps and the
+concrete test changes that would close them. Treat 8.5 as the standing bar the
+Builder's tests are expected to clear; celebrate and lock in scores that reach it
+(the `ratchet`), and never let "above the floor" become an excuse to coast below the
+target.
+
 ## On each wake
 
 1. **Read the diff** at `$RELAY_HOME/qa/diff.patch`. Identify the **test files**
@@ -52,12 +64,17 @@ Baseline for kaleidoscope was **7.9 (Excellent)**; floor **7.5**, max-drop **0.3
    fixes. Pass it the changed test paths and `$PROJECT_DIR` as context.
 3. **Judge against the floor.** Compare the new Farley Index to the floor and to your
    recorded best in `farley-history.jsonl`.
-4. **Send the review to the Builder** over `qa>builder`:
-   - If the score is **at or above** the floor: send a `test-review` — the Farley
-     Index, the per-property breakdown, and the top improvement suggestions.
-   - If the score is **below** the floor, or dropped past tolerance: send a
-     `warning` — state the score, the floor, exactly which properties regressed and
-     in which tests, and the specific changes needed to recover.
+4. **Send the review to the Builder** over `qa>builder`, in one of three bands:
+   - **At or above the 8.5 target:** send a `test-review` — the Farley Index, the
+     per-property breakdown, what's carrying the score, and any remaining polish.
+     Affirm that the target is met so the Builder knows to hold this bar.
+   - **Above the floor but below 8.5:** send a `test-review` that is **acceptable but
+     not good enough** — state the score and the gap to 8.5, name exactly which
+     properties are holding it back and in which tests, and give the concrete test
+     changes that would lift it to 8.5. Make it clear the target is not yet met.
+   - **Below the floor, or dropped past tolerance:** send a `warning` — state the
+     score, the floor, exactly which properties regressed and in which tests, and the
+     specific changes needed to recover.
 
    ```bash
    node "$RELAY_TOOL" send --as qa --to builder --type test-review \
