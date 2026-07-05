@@ -39,6 +39,7 @@ relay/
 
   iterm_launch.py        open the swarm as separate, tiled iTerm windows
   iterm_dispatch.py      push dispatcher — wakes a window when it has mail
+  dispatch_watchdog.py   restarts the dispatcher if it dies (delivery must not stall)
   iterm_sentinel.py      trigger that wakes the Sentinel to audit
   iterm_qa.py            trigger that wakes QA to score test design (Farley Index)
   iterm_warden.py        trigger that wakes the Warden to scan changes for vulnerabilities
@@ -64,16 +65,19 @@ START_DELAY=15 python3 relay/iterm_launch.py <swarm-name> <project-dir>
 # 2. delivery — wakes a window when its inbox has ledger-verified mail (leave running)
 python3 relay/iterm_dispatch.py --home <project-dir>/.relay &
 
-# 3. the Sentinel's audit trigger (leave running)
+# 3. watchdog — restarts the dispatcher if it ever dies, so the chain can't silently stall (leave running)
+python3 relay/dispatch_watchdog.py --home <project-dir>/.relay &
+
+# 4. the Sentinel's audit trigger (leave running)
 python3 relay/iterm_sentinel.py --home <project-dir>/.relay &
 
-# 4. the QA reviewer's trigger — wakes QA on new commits to score test design (leave running)
+# 5. the QA reviewer's trigger — wakes QA on new commits to score test design (leave running)
 python3 relay/iterm_qa.py --home <project-dir>/.relay &
 
-# 5. the Warden's trigger — wakes the Warden on new commits to scan for vulnerabilities (leave running)
+# 6. the Warden's trigger — wakes the Warden on new commits to scan for vulnerabilities (leave running)
 python3 relay/iterm_warden.py --home <project-dir>/.relay &
 
-# 6. (optional) badge + per-role background colour on the live windows
+# 7. (optional) badge + per-role background colour on the live windows
 python3 relay/iterm_decorate.py --home <project-dir>/.relay
 ```
 
