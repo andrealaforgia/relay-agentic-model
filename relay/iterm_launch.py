@@ -22,11 +22,12 @@ import sys
 import time
 
 TOOL_DIR = pathlib.Path(__file__).resolve().parent
-# The relay chain, then its two out-of-chain observers (qa = test-design reviewer,
-# sentinel = comms auditor). Left-to-right window order follows this list; observers
-# sit to the right of the chain. Both are mapped in windows.json so their drivers
-# (iterm_qa.py / iterm_sentinel.py) can wake the right session by UUID.
-ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "sentinel"]
+# The relay chain, then its out-of-chain observers (qa = test-design reviewer,
+# warden = security expert, sentinel = comms auditor). Left-to-right window order
+# follows this list; observers sit to the right of the chain. All are mapped in
+# windows.json so their drivers (iterm_qa.py / iterm_warden.py / iterm_sentinel.py)
+# can wake the right session by UUID.
+ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "warden", "sentinel"]
 CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions")
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
@@ -168,6 +169,12 @@ def main():
                     "Your data root is $RELAY_HOME. When you receive a 'QA time' message, review "
                     "the staged diff's tests per the playbook, send the result to the builder over "
                     "qa>builder, then stop.")
+        elif r == "warden":
+            kick = ("Read $RELAY_AGENTS/warden.md and act as the Warden (Security Expert) for this "
+                    "project — an observer outside the relay chain (you receive no relay mail). "
+                    "Your data root is $RELAY_HOME. When you receive a 'Warden time' message, scan "
+                    "the staged diff for security vulnerabilities per the playbook, send the result "
+                    "to the builder over warden>builder, then stop.")
         else:
             kick = f"Read $RELAY_AGENTS/{r}.md and act as the {r} for this project. {base}"
         write_to_window(win_ids[r], kick)

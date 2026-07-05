@@ -3,10 +3,10 @@
 A five-role relay where a human's problem is sliced into a validated roadmap and
 delivered one potentially shippable increment at a time, through
 [Expectation-Driven Development](https://a4al6a.substack.com/p/expectation-driven-development-a)
-— with two out-of-chain observers (a **Sentinel** and a **QA** reviewer) watching
-alongside. Each chain agent talks only to its immediate neighbours, and every message
-— including the human's gate decisions — is recorded in an append-only ledger you can
-audit.
+— with three out-of-chain observers (a **Sentinel**, a **QA** reviewer, and a
+**Warden** security expert) watching alongside. Each chain agent talks only to its
+immediate neighbours, and every message — including the human's gate decisions — is
+recorded in an append-only ledger you can audit.
 
 ## The chain
 
@@ -18,6 +18,7 @@ flowchart LR
     S -.-> E
     S -.-> B
     Q(["QA<br/>Farley test-design"]) -. "test-review / warning" .-> B
+    W(["Warden<br/>security expert"]) -. "security-review / warning" .-> B
 ```
 
 | Role | Was called | Talks to | Transforms… |
@@ -34,7 +35,7 @@ sets expectations and judges evidence.
 
 ### Observers (outside the chain)
 
-Two agents run alongside the relay but are not links in it — they only ever speak
+Three agents run alongside the relay but are not links in it — they only ever speak
 *one-way*, and no agent replies:
 
 - **Sentinel** — the communication auditor. Reads the whole ledger and may send
@@ -43,6 +44,9 @@ Two agents run alongside the relay but are not links in it — they only ever sp
 - **QA** — the test-design reviewer. On new commits it scores the Builder's changed
   tests with the **Farley Index** (Dave Farley's 8 Properties of Good Tests) and sends
   the Builder a `test-review`, or a `warning` when quality drops below a calibrated floor.
+- **Warden** — the security expert. On new commits it scans the Builder's changed code
+  for vulnerabilities and violations of common security patterns, and sends the Builder
+  a `security-review`, or a `warning` on any Critical/High or newly introduced vulnerability.
 
 ## Two ways to run it
 
@@ -92,10 +96,10 @@ gates.
    It still travels neighbour-to-neighbour: each agent applies it and relays it to
    its downstream neighbour, so it reaches the whole chain
    (owner → interpreter → analyst → examiner → builder).
-5. **Out-of-chain observers.** The Sentinel and QA sit outside the chain and speak
-   one-way only: the Sentinel may message any agent (`sentinel>*`), and QA messages
-   the Builder (`qa>builder`). These edges are listed in `topology.json` beside the
-   chain edges, so their messages validate too.
+5. **Out-of-chain observers.** The Sentinel, QA, and Warden sit outside the chain and
+   speak one-way only: the Sentinel may message any agent (`sentinel>*`), while QA and
+   the Warden message the Builder (`qa>builder`, `warden>builder`). These edges are
+   listed in `topology.json` beside the chain edges, so their messages validate too.
 
 These rules live in **`topology.json`** — the single source of truth — and are
 enforced in two places that both read it: the orchestrator's in-run `append()`

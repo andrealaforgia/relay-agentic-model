@@ -4,7 +4,7 @@
 Reads <RELAY_HOME>/ledger.jsonl and writes a self-contained static HTML page
 (no external assets, no JS framework — expand/collapse uses native <details>).
 Fixed columns, left to right: Owner, Interpreter, Analyst, Examiner, Builder,
-Sentinel. Each message appears as a card in its SENDER's column, presenting the
+QA, Warden, Sentinel. Each message appears as a card in its SENDER's column, presenting the
 message **type**, its **recipient**, and its **content** (plus seq, refs, time).
 
 Deterministic and cheap — re-run it anytime to refresh the board:
@@ -21,10 +21,11 @@ import pathlib
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 
 # Fixed column order for the board, left to right.
-LANES = ["owner", "interpreter", "analyst", "examiner", "builder", "qa", "sentinel"]
+LANES = ["owner", "interpreter", "analyst", "examiner", "builder", "qa", "warden", "sentinel"]
 ACCENTS = {
     "owner": "#6b7280", "interpreter": "#2563eb", "analyst": "#7c3aed",
-    "examiner": "#0d9488", "builder": "#d97706", "qa": "#db2777", "sentinel": "#dc2626",
+    "examiner": "#0d9488", "builder": "#d97706", "qa": "#db2777",
+    "warden": "#06b6d4", "sentinel": "#dc2626",
 }
 
 
@@ -61,7 +62,7 @@ def card(m):
 
 
 def render(msgs):
-    # Fixed columns, left to right: Owner, Interpreter, Analyst, Examiner, Builder, Sentinel.
+    # Fixed columns, left to right: Owner, Interpreter, Analyst, Examiner, Builder, QA, Warden, Sentinel.
     lanes = LANES
     channels = sorted({f'{m["from"]}>{m["to"]}' for m in msgs})
     participants = {p for m in msgs for p in (m["from"], m["to"])}

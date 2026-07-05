@@ -29,6 +29,7 @@ PALETTE = {
     "sentinel":    ((220, 60, 60),  "SENTINEL",    "3d0c12"),   # red   — the auditor
     "documenter":  ((40, 160, 235), "Documenter",  "08243d"),   # blue    — the docs observer
     "qa":          ((236, 72, 153), "QA",          "3d0c2e"),   # magenta — the test-design reviewer
+    "warden":      ((6, 182, 212),  "WARDEN",      "07323d"),   # cyan    — the security expert
 }
 
 

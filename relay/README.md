@@ -1,10 +1,10 @@
 # Filesystem-mailbox relay
 
 Four agents form the chain — each in its own Claude session on this machine, talking
-only to their neighbours through plain files — plus two out-of-chain observers (a
-**Sentinel** and a **QA** reviewer) that watch alongside. No server, no broker —
-every message is a file you can `ls`, `cat`, and replay. A stuck chain is just a
-message sitting in an inbox.
+only to their neighbours through plain files — plus three out-of-chain observers (a
+**Sentinel**, a **QA** reviewer, and a **Warden** security expert) that watch
+alongside. No server, no broker — every message is a file you can `ls`, `cat`, and
+replay. A stuck chain is just a message sitting in an inbox.
 
 ```mermaid
 flowchart LR
@@ -17,13 +17,14 @@ flowchart LR
     S -.-> E
     S -.-> B
     Q(["QA<br/>Farley test-design"]) -. "test-review / warning" .-> B
+    W(["Warden<br/>security expert"]) -. "security-review / warning" .-> B
 ```
 
 Only the `owner↔interpreter` edge is a live conversation (the human types in the
 Interpreter's session). All three agent-to-agent edges — Interpreter↔Analyst,
 Analyst↔Examiner, Examiner↔Builder — go through mailbox files via the relay. The
-Sentinel and QA stand outside the chain and speak one-way only (dotted): no agent
-replies to them.
+Sentinel, QA, and Warden stand outside the chain and speak one-way only (dotted): no
+agent replies to them.
 
 ## Files
 
@@ -40,6 +41,7 @@ relay/
   iterm_dispatch.py      push dispatcher — wakes a window when it has mail
   iterm_sentinel.py      trigger that wakes the Sentinel to audit
   iterm_qa.py            trigger that wakes QA to score test design (Farley Index)
+  iterm_warden.py        trigger that wakes the Warden to scan changes for vulnerabilities
   iterm_decorate.py      give each window a role badge + background colour
   draw.py                render the ledger as a swimlane comms board (Communication Drawer)
   iterm/windows.json     role -> iTerm session UUID (written by the launcher)
@@ -68,7 +70,10 @@ python3 relay/iterm_sentinel.py --home <project-dir>/.relay &
 # 4. the QA reviewer's trigger — wakes QA on new commits to score test design (leave running)
 python3 relay/iterm_qa.py --home <project-dir>/.relay &
 
-# 5. (optional) badge + per-role background colour on the live windows
+# 5. the Warden's trigger — wakes the Warden on new commits to scan for vulnerabilities (leave running)
+python3 relay/iterm_warden.py --home <project-dir>/.relay &
+
+# 6. (optional) badge + per-role background colour on the live windows
 python3 relay/iterm_decorate.py --home <project-dir>/.relay
 ```
 
@@ -214,6 +219,14 @@ edge. What each type means and the abstraction it carries:
 | `warning` | QA → Builder | Test-design quality dropped below the calibrated floor — which properties regressed, in which tests, and how to recover. |
 | `advisory` | QA → Builder | Production code changed with no test changes (nothing to score), or a minor note. |
 
+**Out-of-band — the Warden (security expert, outside the chain)**
+
+| Type | Direction | Meaning |
+|------|-----------|---------|
+| `security-review` | Warden → Builder | Findings from scanning the changed code, classified by severity (Critical/High/Medium/Low/Info) with affected locations and concrete fixes, when nothing Critical/High is present. |
+| `warning` | Warden → Builder | A Critical/High vulnerability, or a newly introduced one — the severity, the affected code, the impact/exploit path, and the change needed to close it. Must not pass. |
+| `advisory` | Warden → Builder | The change was security-irrelevant (nothing to review), or a minor note. |
+
 **Line-wide — the extraordinary broadcast**
 
 | Type | Direction | Meaning |
@@ -267,10 +280,11 @@ independent record. Commit `ledger.jsonl` per engagement for tamper-evident hist
 ## Observers (outside the chain)
 
 These run alongside the swarm but are not links in the chain. The Communication
-Drawer and Documenter only read. Two observers also *speak* — one-way — to keep the
+Drawer and Documenter only read. Three observers also *speak* — one-way — to keep the
 chain honest: the **Sentinel** may send `advisory`/`warning`/`directive` to any agent
-(the `sentinel>*` edges in `topology.json`), and **QA** sends `test-review`/`warning`
-to the Builder (the `qa>builder` edge). No agent replies to either.
+(the `sentinel>*` edges in `topology.json`), **QA** sends `test-review`/`warning` to
+the Builder (the `qa>builder` edge), and the **Warden** sends `security-review`/`warning`
+to the Builder (the `warden>builder` edge). No agent replies to any of them.
 
 - **Sentinel** (`agents/sentinel.md` + `iterm_sentinel.py`) — the Communication
   Auditor. Periodically audits the ledger for per-edge contract breaches (e.g. the
@@ -286,6 +300,14 @@ to the Builder (the `qa>builder` edge). No agent replies to either.
   — over the one-way `qa>builder` edge; the Builder does not reply. Its window is
   opened by `iterm_launch.py`; wake it on a schedule with
   `python3 relay/iterm_qa.py --home <project>/.relay`.
+- **Warden** (`agents/warden.md` + `iterm_warden.py`) — the Security Expert. Whenever
+  the project has new commits, it reads the staged diff, scans the changed code for
+  vulnerabilities and violations of common security patterns with the
+  `alf-security-assessor` agent, classifies findings by severity, and sends the Builder
+  a `security-review` — or a `warning` on any Critical/High or newly introduced
+  vulnerability — over the one-way `warden>builder` edge; the Builder does not reply.
+  Its window is opened by `iterm_launch.py`; wake it on a schedule with
+  `python3 relay/iterm_warden.py --home <project>/.relay`.
 - **Communication Drawer** (`draw.py`) — renders the ledger as a Kaleidoscope-style
   swimlane board (one lane per agent, expandable message cards, direction arrows).
   Deterministic; re-run anytime:
