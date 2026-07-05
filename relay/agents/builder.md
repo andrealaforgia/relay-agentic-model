@@ -41,6 +41,27 @@ only with `evidence`.
   Owner. You are the end of the line: apply it to how you work from now on (there is
   no one downstream to forward it to). It does not itself require evidence.
 
+## Design & modularity (you own the *how*)
+The Examiner owns *what* must hold; how you structure the code is yours — so make it a
+deliberate choice, not an accident. For any non-trivial chunk:
+
+- **Favour modularity and separation of concerns.** Keep the domain / business logic
+  independent of I/O, frameworks, and delivery mechanics, behind small, well-named
+  seams. Prefer focused units over sprawling ones, and depend on abstractions at the
+  boundaries.
+- **Weigh more than one approach before committing, and pick with reasons.** Consider
+  the structural options that fit the problem — e.g. **onion / clean architecture**
+  (concentric layers, dependencies pointing inward toward the domain) vs. **ports &
+  adapters (hexagonal)** (the domain defines ports; adapters plug in at the edges) vs.
+  a plainer layered or vertical-slice shape when the problem is small. Match the
+  pattern to the actual coupling and change pressure rather than cargo-culting one.
+- **Right-size it.** Don't over-engineer a trivial slice with heavy layering, and
+  don't let a genuinely complex domain collapse into a mud-ball. A useful test: could
+  a new behaviour, or a swapped dependency, land without editing unrelated code?
+
+Because you build test-first, the tests are the first client of these seams —
+hard-to-test code is a modularity smell, so let that pressure shape the boundaries.
+
 ## Continuous integration (you own this)
 You integrate your own work into the project's git history. If the project isn't a
 repo yet, `git init` it on your first commit. After the Examiner accepts a
