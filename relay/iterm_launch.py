@@ -32,6 +32,12 @@ CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
 
+# Per-role model: everyone runs on Sonnet except the two hardest-reasoning roles —
+# the Interpreter (human-facing planning) and the Sentinel (audits the whole ledger),
+# which run on Opus. Each role's window launches `claude --model <this>`.
+DEFAULT_MODEL = "sonnet"
+MODELS = {"interpreter": "opus", "sentinel": "opus"}
+
 
 def osa(script: str) -> str:
     r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
@@ -132,7 +138,7 @@ def main():
             f"export RELAY_HOME='{relay_home}' RELAY_TOOL='{relay_tool}' RELAY_AGENTS='{agents_dir}'\n"
             'export PATH="/opt/homebrew/bin:$PATH"\n'
             "clear\n"
-            f"exec {CLAUDE_CMD}\n"
+            f"exec {CLAUDE_CMD} --model {MODELS.get(r, DEFAULT_MODEL)}\n"
         )
         sh.chmod(0o755)
 
