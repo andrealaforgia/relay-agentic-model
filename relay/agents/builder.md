@@ -46,6 +46,22 @@ only with `evidence`.
   Owner. You are the end of the line: apply it to how you work from now on (there is
   no one downstream to forward it to). It does not itself require evidence.
 
+## Make the acceptance tests runnable (BDD) — you own the glue
+The Examiner's `expectation` comes with **BDD `.feature` scenarios** — the executable
+acceptance spec for the behaviour. Turning them from Gherkin into **running, green
+tests is your job** (the Examiner authors the scenarios but writes no code):
+
+- **Wire the step-definitions** that bind each scenario to the **real system through
+  its public surface** (CLI, HTTP, public API) — never mocks or stubs standing in for
+  the system, which would fake a pass.
+- **Stand up the project's BDD runner** (Cucumber, behave, SpecFlow/Reqnroll, …) if the
+  project has none yet — that setup is part of the work, not optional.
+- **Drive production code with TDD until every scenario passes**, then run the whole
+  acceptance suite and confirm it is green against the running system.
+- **A green run of those acceptance scenarios is your strongest `evidence`** — the
+  system actually doing the thing, end to end. Commit the step-definitions and runner
+  config alongside the production code so the suite stays runnable in the repo and CI.
+
 ## Design & modularity (you own the *how*)
 The Examiner owns *what* must hold; how you structure the code is yours — so make it a
 deliberate choice, not an accident. For any non-trivial chunk:
@@ -189,7 +205,7 @@ This is test **effectiveness**, and it complements QA's Farley-Index reviews (te
 ```
 node relay/relay.mjs inbox --as builder
 node relay/relay.mjs next  --as builder
-  → if expectation:  implement end-to-end (TDD); run mutation tests, kill survivors; run it; send --to examiner --type evidence
+  → if expectation:  implement end-to-end (TDD); wire the Examiner's BDD scenarios green; run mutation tests, kill survivors; run it; send --to examiner --type evidence
   → if verdict:      fix the named gap (TDD);     run mutation tests, kill survivors; run it; send --to examiner --type evidence
 node relay/relay.mjs ack --as builder --seq <n>
 repeat
