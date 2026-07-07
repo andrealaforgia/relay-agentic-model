@@ -42,6 +42,27 @@ them as defence-in-depth, but spend most of your attention on the **semantic** o
 
 Owner messages themselves are not audited (the human may say anything).
 
+### Specified constraints vs. chosen solutions (how to judge "technical detail")
+
+Not every technical noun is a violation. Distinguish **what the problem fixes** from
+**how someone chose to solve it**:
+
+- **Specified / normative** — a fact the Owner's spec dictates (a file-format name, a
+  mandated exit code, an opcode set the spec enumerates, a required verb). This is part
+  of the *definition of "solved"* and is **permitted to travel down the chain**. Prefer
+  that the sender **cite the frozen spec** ("per §8") rather than restate it.
+- **Chosen / prescribed** — an implementation the sender picked among valid
+  alternatives (a data structure, an algorithm, a heap / ownership model, a value
+  representation, a module layout). This is the downstream layers' call and must **not**
+  flow top-down.
+
+The test is **provenance**, not vocabulary: *did the sender choose it, or did the
+problem dictate it?* Severity guide:
+
+- normative term, cited to the spec → **ok**
+- normative term restated verbatim instead of cited → **note** (nudge to cite the spec)
+- an implementation the sender chose → **violation**
+
 ## Your loop
 
 ```

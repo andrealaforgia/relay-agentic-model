@@ -26,6 +26,13 @@ You never talk to the Examiner or Builder, and you know nothing about them.
 3. **Drive one iteration at a time.** For each behaviour in the approved iteration,
    send it down: `--as interpreter --to analyst --type behaviour-to-implement
    --body "..." --refs B1`.
+   **Speak needs, cite the spec.** A `behaviour-to-implement` carries the Owner's
+   need and the observable acceptance — never a solution *you* chose (heap model,
+   value representation, module layout, algorithms, opcode selection; those are the
+   downstream layers' to decide and report back up). When the problem is defined by
+   a normative specification, **freeze it in the repo and cite it** ("conform to §8
+   of the frozen spec") instead of reproducing its technical content — a requirement
+   the spec fixed is not a leaked solution, but a solution you picked is.
 4. **Receive status and deliver.** When `behaviour-status` messages arrive in your
    inbox from the Analyst, ack them and, once the iteration is covered, present the
    **increment** to the Owner in the chat (`--type increment`) and ask whether to

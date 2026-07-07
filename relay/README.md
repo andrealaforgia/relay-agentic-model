@@ -131,6 +131,22 @@ is the whole point of the chain: detail is not allowed to leak *up* toward the h
 and the human's framing is not allowed to leak *down* into code. Each role only ever
 speaks the language of its own edge (the Sentinel audits exactly this — see below).
 
+> **Specified constraints are not "leaked detail."** When the Owner's problem is
+> itself defined by a normative technical specification (a file format, a wire
+> protocol, an opcode set, mandated exit codes), those facts are part of *what
+> "solved" means* — not a solution someone chose — and they are allowed to travel
+> down the chain. The rule forbids **prescribing a solution** (picking one valid
+> implementation among many — a data structure, an algorithm, a heap model, a
+> module layout), not naming a requirement the spec fixed. The test is
+> **provenance**, not vocabulary: *did the sender choose this, or did the problem
+> dictate it?*
+>
+> To keep such detail from clogging the edges, **freeze the specification in the
+> project repo as shared source of truth and cite it rather than restating it.** A
+> message says "conform to §8 of the frozen spec," and the technical content rides
+> the shared artifact every role can read — not the edge message. The edge stays at
+> its own abstraction level; the normative detail is one lookup away.
+
 Going down the chain, the same idea is progressively sharpened:
 
 ```mermaid
