@@ -38,6 +38,11 @@ relay/
   agents/<role>.md       the playbook each session adopts
 
   iterm_launch.py        open the swarm as separate, tiled iTerm windows
+  iterm_close.py         close a swarm's windows cleanly (kills the tty first — no
+                         "still running?" dialog to hang an unattended script)
+  swarm-up.sh            one-shot launch: windows + all 5 daemons, fully detached
+  swarm-down.sh          one-shot teardown: stop daemons (+ close windows, unless
+                         --keep-windows)
   iterm_dispatch.py      push dispatcher — wakes a window when it has mail
   dispatch_watchdog.py   restarts the dispatcher if it dies (delivery must not stall)
   iterm_sentinel.py      trigger that wakes the Sentinel to audit
@@ -55,6 +60,29 @@ Each agent gets its own iTerm window, tiled across the screen so you can watch t
 all at once. A few small Python tools drive it; all address sessions by their stable
 iTerm **session UUID** (window ids get recycled when a window closes, which would
 misdeliver a wake).
+
+### Quick start: `swarm-up.sh` / `swarm-down.sh`
+
+```
+# launch (idempotent — tears down any existing windows/daemons for this project
+# dir first, then opens fresh windows and starts all 5 daemons, fully detached
+# via nohup+disown so they outlive the shell/session that launched them)
+relay/swarm-up.sh   <swarm-name> <project-dir>
+
+# shut down (stops the 5 daemons and closes the 7 windows)
+relay/swarm-down.sh <swarm-name> <project-dir>
+
+# ...or just stop the daemons and leave the agent windows/conversations open
+relay/swarm-down.sh <swarm-name> <project-dir> --keep-windows
+```
+
+Then talk to the **interpreter** window as the Owner. `node`/`npm` must be on the
+agents' PATH (e.g. symlinked into `/opt/homebrew/bin` if you use nvm).
+
+### Doing it by hand
+
+`swarm-up.sh` is just the steps below, glued together. Useful if you want to run a
+daemon in the foreground for debugging, or only restart one of them:
 
 ```
 # 1. open the swarm (idempotent: preserves an existing ledger + mailboxes).
@@ -81,8 +109,9 @@ python3 relay/iterm_warden.py --home <project-dir>/.relay &
 python3 relay/iterm_decorate.py --home <project-dir>/.relay
 ```
 
-Then talk to the **interpreter** window as the Owner. `node`/`npm` must be on the
-agents' PATH (e.g. symlinked into `/opt/homebrew/bin` if you use nvm).
+A daemon started with a bare trailing `&` from an interactive shell (rather than via
+`swarm-up.sh`'s `nohup ... & disown`) stays tied to that shell/session and can get
+killed when it exits — detach it yourself if that matters to you.
 
 The dispatcher is **rock-solid by design**: it watches inboxes (not the ledger), so
 N messages arriving at once cause exactly one wake; it sends the wake in two steps
@@ -90,6 +119,19 @@ N messages arriving at once cause exactly one wake; it sends the wake in two ste
 only delivers inbox files backed by a real ledger entry from a permitted sender
 (so a file dropped straight into a mailbox is ignored); and it re-wakes an idle
 window that still has mail, so a dropped wake self-heals.
+
+**Idle detection is a text match on the footer, and it can go stale.** `iterm_dispatch.py`,
+`iterm_sentinel.py`, `iterm_qa.py`, and `iterm_warden.py` all decide "idle vs busy" by
+matching known substrings in the session's visible tail (`"esc to interrupt"` = busy;
+`"for agents"` / `"? for shortcuts"` / `"shift+tab to cycle"` = idle; anything else
+defaults to busy, since waking a genuinely busy session mid-generation is worse than a
+missed wake). If a Claude Code UI update changes the footer text, a window can look
+permanently "busy" to every watcher and its mail silently never gets delivered — the
+process itself keeps running and logs nothing wrong, so this fails silently. If mail
+sits undelivered with no wake attempts logged for a role that's actually idle, this is
+the first thing to check: capture that session's `contents` (see `session_contents()`
+in any of the four scripts) and add whatever its current idle footer contains to the
+`is_busy()` match list, in all four files.
 
 ### Resume after a restart / crash
 

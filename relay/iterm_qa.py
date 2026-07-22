@@ -95,7 +95,7 @@ def is_busy(contents):
     tail = contents[-600:]
     if "esc to interrupt" in tail:
         return True
-    if "for agents" in tail or "? for shortcuts" in tail:
+    if "for agents" in tail or "? for shortcuts" in tail or "shift+tab to cycle" in tail:
         return False
     return True
 
