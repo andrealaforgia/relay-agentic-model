@@ -1,6 +1,6 @@
 #!/bin/bash
-# Launch (or relaunch) an agentic relay swarm: opens the 7 role windows and
-# starts the 5 communication daemons, fully detached from this shell (they
+# Launch (or relaunch) an agentic relay swarm: opens the 8 role windows and
+# starts the 6 communication daemons, fully detached from this shell (they
 # survive the terminal/session that launched them).
 #
 #   relay/swarm-up.sh <swarm-name> <project-dir>
@@ -37,9 +37,10 @@ nohup python3 "$TOOL_DIR/dispatch_watchdog.py" --home "$RELAY_HOME" >> "$RELAY_H
 nohup python3 "$TOOL_DIR/iterm_sentinel.py"    --home "$RELAY_HOME" >> "$RELAY_HOME/sentinel.log"          2>&1 & disown
 nohup python3 "$TOOL_DIR/iterm_qa.py"          --home "$RELAY_HOME" >> "$RELAY_HOME/qa-trigger.log"        2>&1 & disown
 nohup python3 "$TOOL_DIR/iterm_warden.py"      --home "$RELAY_HOME" >> "$RELAY_HOME/warden-trigger.log"    2>&1 & disown
+nohup python3 "$TOOL_DIR/iterm_reaper.py"      --home "$RELAY_HOME" >> "$RELAY_HOME/reaper-trigger.log"    2>&1 & disown
 
 sleep 1
-n=$(pgrep -f "relay/(iterm_dispatch|dispatch_watchdog|iterm_sentinel|iterm_qa|iterm_warden)\.py --home $RELAY_HOME" | wc -l | tr -d ' ')
+n=$(pgrep -f "relay/(iterm_dispatch|dispatch_watchdog|iterm_sentinel|iterm_qa|iterm_warden|iterm_reaper)\.py --home $RELAY_HOME" | wc -l | tr -d ' ')
 echo
-echo "swarm '$SWARM_NAME' is up: $PROJECT_DIR  ($n/5 daemons running)"
+echo "swarm '$SWARM_NAME' is up: $PROJECT_DIR  ($n/6 daemons running)"
 echo "shut down with: $TOOL_DIR/swarm-down.sh $SWARM_NAME $PROJECT_DIR"

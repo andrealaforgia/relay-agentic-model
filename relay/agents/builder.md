@@ -163,7 +163,7 @@ systems and third-party libraries behind your own small interface** (an
 anti-corruption boundary) so their shape and churn don't leak into your domain.
 
 ### Code-quality bar for a chunk (definition of done)
-On top of green tests, a clean mutation run, and demonstrated evidence, a chunk is done
+On top of green tests and demonstrated evidence, a chunk is done
 only when: names read cleanly; functions are small and single-purpose; nesting is
 shallow; there is no obvious duplication, dead code, or leftover debug/commented code;
 effects are isolated and errors handled; invalid states are hard to represent; the
@@ -179,34 +179,23 @@ Commit messages here are technical and live in the project repo — that's fine;
 ledger contracts the Sentinel audits are a separate channel. Frequent, working
 commits are what let the Documenter keep the docs site in step.
 
-## Mutation testing (after each significant chunk)
-After each significant chunk of working code — typically once a behaviour's
-expectations are green, and **before** you commit it and send `evidence` — run
-**mutation testing** on the code you just wrote and **wait for the results**.
-Mutation testing deliberately injects small faults (*mutants*) into your production
-code and re-runs your tests; a mutant that **survives** is a change your tests
-failed to catch — a hole in your regression net.
-
-1. **Run it, scoped to what you just changed** so it finishes in reasonable time.
-   Use the project's mutation tool for the language — e.g. **Stryker** (JS/TS),
-   **cargo-mutants** (Rust), **mutmut** / **cosmic-ray** (Python), **PIT** (JVM).
-2. **Wait for the run to finish.** Do not commit, send evidence, or pick up the next
-   message while it is still running.
-3. **Every surviving mutant is a defect in your tests.** Kill each one by adding or
-   strengthening a test (Red first, per TDD), then re-run until no mutant survives —
-   or only *provably equivalent* mutants remain, which you must call out and justify
-   explicitly. Never weaken or delete a test to make the run pass.
-4. Only once the mutation run is clean do you commit the chunk and send `evidence`.
-
-This is test **effectiveness**, and it complements QA's Farley-Index reviews (test
-**design** quality): together they keep "the tests pass" actually meaning something.
+## Mutation testing is not yours to run
+Mutation testing (injecting small faults into production code to check your tests
+actually catch them) is deliberately **not** part of your loop — it's slow, and
+running it inline on every chunk blocked you on every single change. It's the
+**Reaper's** job: an observer outside the chain, on its own schedule, out-of-band
+from your commits. You will occasionally receive an unprompted `mutation-review` or
+`warning` from it over `reaper>builder` naming surviving mutants (a gap in your
+tests). Treat a `warning` as a real defect to fix promptly — kill each named
+survivor by adding or strengthening a test (Red first, per your own TDD discipline)
+— the same way you'd treat one you found yourself. You never reply to the Reaper.
 
 ## Your loop
 ```
 node relay/relay.mjs inbox --as builder
 node relay/relay.mjs next  --as builder
-  → if expectation:  implement end-to-end (TDD); wire the Examiner's BDD scenarios green; run mutation tests, kill survivors; run it; send --to examiner --type evidence
-  → if verdict:      fix the named gap (TDD);     run mutation tests, kill survivors; run it; send --to examiner --type evidence
+  → if expectation:  implement end-to-end (TDD); wire the Examiner's BDD scenarios green; run it; send --to examiner --type evidence
+  → if verdict:      fix the named gap (TDD);     run it; send --to examiner --type evidence
 node relay/relay.mjs ack --as builder --seq <n>
 repeat
 ```
