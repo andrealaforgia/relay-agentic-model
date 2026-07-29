@@ -1,6 +1,6 @@
 #!/bin/bash
-# Tear down an agentic relay swarm: stops the 6 communication daemons and
-# closes the 8 role windows for the given project.
+# Tear down an agentic relay swarm: stops the 7 communication daemons and
+# closes the 9 role windows for the given project.
 #
 #   relay/swarm-down.sh <swarm-name> <project-dir> [--keep-windows]
 #
@@ -21,7 +21,7 @@ KEEP_WINDOWS=false
 [ "${3:-}" = "--keep-windows" ] && KEEP_WINDOWS=true
 
 echo "== stopping daemons for $SWARM_NAME ($RELAY_HOME) =="
-if pkill -f "relay/(iterm_dispatch|dispatch_watchdog|iterm_sentinel|iterm_qa|iterm_warden|iterm_reaper)\.py --home $RELAY_HOME"; then
+if pkill -f "relay/(iterm_dispatch|dispatch_watchdog|iterm_sentinel|iterm_qa|iterm_warden|iterm_reaper|iterm_courier)\.py --home $RELAY_HOME"; then
   echo "daemons stopped"
 else
   echo "no daemons were running"

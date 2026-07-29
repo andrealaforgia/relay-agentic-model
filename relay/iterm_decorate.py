@@ -30,6 +30,8 @@ PALETTE = {
     "documenter":  ((40, 160, 235), "Documenter",  "08243d"),   # blue    — the docs observer
     "qa":          ((236, 72, 153), "QA",          "3d0c2e"),   # magenta — the test-design reviewer
     "warden":      ((6, 182, 212),  "WARDEN",      "07323d"),   # cyan    — the security expert
+    "reaper":      ((255, 140, 0),  "REAPER",      "3d2408"),   # orange  — the mutation-testing observer
+    "courier":     ((163, 230, 53), "COURIER",     "1f3d08"),   # lime    — the acceptance-test runner
 }
 
 

@@ -23,12 +23,12 @@ import time
 
 TOOL_DIR = pathlib.Path(__file__).resolve().parent
 # The relay chain, then its out-of-chain observers (qa = test-design reviewer,
-# warden = security expert, reaper = mutation testing, sentinel = comms auditor).
-# Left-to-right window order follows this list; observers sit to the right of the
-# chain. All are mapped in windows.json so their drivers (iterm_qa.py /
-# iterm_warden.py / iterm_reaper.py / iterm_sentinel.py) can wake the right
-# session by UUID.
-ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "warden", "reaper", "sentinel"]
+# warden = security expert, reaper = mutation testing, courier = acceptance-test
+# runner, sentinel = comms auditor). Left-to-right window order follows this list;
+# observers sit to the right of the chain. All are mapped in windows.json so their
+# drivers (iterm_qa.py / iterm_warden.py / iterm_reaper.py / iterm_courier.py /
+# iterm_sentinel.py) can wake the right session by UUID.
+ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "warden", "reaper", "courier", "sentinel"]
 CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions")
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
@@ -188,6 +188,12 @@ def main():
                     "Your data root is $RELAY_HOME. When you receive a 'Reaper time' message, run "
                     "mutation testing on the staged diff's changed production code per the playbook, "
                     "send the result to the builder over reaper>builder, then stop.")
+        elif r == "courier":
+            kick = ("Read $RELAY_AGENTS/courier.md and act as the Courier (Acceptance Test Runner) for "
+                    "this project — an observer outside the relay chain (you receive no relay mail). "
+                    "Your data root is $RELAY_HOME. When you receive a 'Courier time' message, run the "
+                    "whole acceptance/BDD suite per the playbook, send the result to the builder over "
+                    "courier>builder, then stop.")
         else:
             kick = f"Read $RELAY_AGENTS/{r}.md and act as the {r} for this project. {base}"
         write_to_window(win_ids[r], kick)

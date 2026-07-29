@@ -3,10 +3,11 @@
 A five-role relay where a human's problem is sliced into a validated roadmap and
 delivered one potentially shippable increment at a time, through
 [Expectation-Driven Development](https://a4al6a.substack.com/p/expectation-driven-development-a)
-— with four out-of-chain observers (a **Sentinel**, a **QA** reviewer, a **Warden**
-security expert, and a **Reaper** running mutation testing) watching alongside. Each
-chain agent talks only to its immediate neighbours, and every message — including
-the human's gate decisions — is recorded in an append-only ledger you can audit.
+— with five out-of-chain observers (a **Sentinel**, a **QA** reviewer, a **Warden**
+security expert, a **Reaper** running mutation testing, and a **Courier** running the
+acceptance suite) watching alongside. Each chain agent talks only to its immediate
+neighbours, and every message — including the human's gate decisions — is recorded in
+an append-only ledger you can audit.
 
 ## The chain
 
@@ -20,6 +21,7 @@ flowchart LR
     Q(["QA<br/>Farley test-design"]) -. "test-review / warning" .-> B
     W(["Warden<br/>security expert"]) -. "security-review / warning" .-> B
     R(["Reaper<br/>mutation testing"]) -. "mutation-review / warning" .-> B
+    C(["Courier<br/>acceptance-test runner"]) -. "acceptance-review / warning" .-> B
 ```
 
 | Role | Was called | Talks to | Transforms… |
@@ -36,7 +38,7 @@ sets expectations and judges evidence.
 
 ### Observers (outside the chain)
 
-Four agents run alongside the relay but are not links in it — they only ever speak
+Five agents run alongside the relay but are not links in it — they only ever speak
 *one-way*, and no agent replies:
 
 - **Sentinel** — the communication auditor. Reads the whole ledger and may send
@@ -53,6 +55,12 @@ Four agents run alongside the relay but are not links in it — they only ever s
   `warning` for any unjustified surviving mutant. Deliberately pulled out of the
   Builder's own loop (mutation testing is slow) to run out-of-band instead of
   blocking every TDD cycle.
+- **Courier** — the acceptance-test runner. On new commits it re-runs the Builder's
+  whole accumulated BDD acceptance suite and sends the Builder an `acceptance-review`,
+  or a `warning` naming each failing scenario. Pulled out of the Builder's own loop
+  because re-running the whole suite gets slower as it grows; runs on a faster cadence
+  than the other observers so feedback comes back quickly, trading a bit of risk (a
+  regression is caught after the fact) for the Builder never blocking on the full suite.
 
 ## Two ways to run it
 
@@ -63,8 +71,9 @@ The same chain, topology, and ledger back two execution surfaces:
   sections below describe.
 - **iTerm relay swarm** (`relay/`) — each agent is a long-lived Claude session in its
   own iTerm window, and messages travel as filesystem-mailbox files a dispatcher
-  delivers; the Sentinel, QA, Warden, and Reaper observers run as their own windows. Best when
-  you want to watch the agents work live. See "Running as a live iTerm swarm" below.
+  delivers; the Sentinel, QA, Warden, Reaper, and Courier observers run as their own
+  windows. Best when you want to watch the agents work live. See "Running as a live
+  iTerm swarm" below.
 
 ## How an engagement runs
 
@@ -102,11 +111,12 @@ gates.
    It still travels neighbour-to-neighbour: each agent applies it and relays it to
    its downstream neighbour, so it reaches the whole chain
    (owner → interpreter → analyst → examiner → builder).
-5. **Out-of-chain observers.** The Sentinel, QA, Warden, and Reaper sit outside the
-   chain and speak one-way only: the Sentinel may message any agent (`sentinel>*`),
-   while QA, the Warden, and the Reaper each message the Builder (`qa>builder`,
-   `warden>builder`, `reaper>builder`). These edges are listed in `topology.json`
-   beside the chain edges, so their messages validate too.
+5. **Out-of-chain observers.** The Sentinel, QA, Warden, Reaper, and Courier sit
+   outside the chain and speak one-way only: the Sentinel may message any agent
+   (`sentinel>*`), while QA, the Warden, the Reaper, and the Courier each message the
+   Builder (`qa>builder`, `warden>builder`, `reaper>builder`, `courier>builder`). These
+   edges are listed in `topology.json` beside the chain edges, so their messages
+   validate too.
 
 These rules live in **`topology.json`** — the single source of truth — and are
 enforced in two places that both read it: the orchestrator's in-run `append()`
@@ -121,7 +131,7 @@ enforced in two places that both read it: the orchestrator's in-run `append()`
 | `ledger.mjs` | Persistence chokepoint + auditor CLI (`count` / `append` / `append-batch` / `verify` / `show`). Runnable with `node`. |
 | `schema/message.schema.json` | The ledger wire format (one message per line). |
 | `ledger/ledger.jsonl` | The audit trail for one engagement. |
-| `relay/` | The live **iTerm relay swarm** — one Claude session per role in its own window, filesystem-mailbox delivery, plus the Sentinel + QA + Warden + Reaper observers. See "Running as a live iTerm swarm" below. |
+| `relay/` | The live **iTerm relay swarm** — one Claude session per role in its own window, filesystem-mailbox delivery, plus the Sentinel + QA + Warden + Reaper + Courier observers. See "Running as a live iTerm swarm" below. |
 
 `orchestrator.workflow.js` runs inside Claude's workflow engine (which provides
 `agent()`, `log()`, …) — run it by asking Claude, not with `node`. `ledger.mjs` is
@@ -191,13 +201,14 @@ you can `ls`, `cat`, and replay; a stuck chain is just a message sitting in an i
 Best when you want to watch the agents work live.
 
 Only the `owner ↔ interpreter` edge is a live conversation — you type in the
-Interpreter's window. The other three chain edges, plus the Sentinel/QA/Warden's
-one-way messages, travel through `<project-dir>/.relay/mailbox/<role>/inbox|done/`.
+Interpreter's window. The other three chain edges, plus the Sentinel/QA/Warden/
+Reaper/Courier's one-way messages, travel through
+`<project-dir>/.relay/mailbox/<role>/inbox|done/`.
 
 ### Quick start
 
 ```
-relay/swarm-up.sh   <swarm-name> <project-dir>   # open all 8 windows + start all 6 daemons, detached
+relay/swarm-up.sh   <swarm-name> <project-dir>   # open all 9 windows + start all 7 daemons, detached
 relay/swarm-down.sh <swarm-name> <project-dir>   # stop the daemons and close the windows
 relay/swarm-down.sh <swarm-name> <project-dir> --keep-windows   # stop daemons only, leave windows open
 ```
@@ -226,7 +237,7 @@ relay/
   iterm_close.py           close a swarm's windows cleanly (used by swarm-down.sh)
   iterm_dispatch.py        push dispatcher — wakes a window when it has mail
   dispatch_watchdog.py     restarts the dispatcher if it dies
-  iterm_sentinel.py / iterm_qa.py / iterm_warden.py / iterm_reaper.py   wake triggers for the four observers
+  iterm_sentinel.py / iterm_qa.py / iterm_warden.py / iterm_reaper.py / iterm_courier.py   wake triggers for the five observers
   iterm_decorate.py        role badge + background colour per window (edit PALETTE to change)
   draw.py                  render the ledger as a swimlane comms board
   iterm_docwatch.py        optional: wakes a Documenter from git history
@@ -245,6 +256,7 @@ python3 relay/iterm_sentinel.py    --home <project-dir>/.relay &
 python3 relay/iterm_qa.py          --home <project-dir>/.relay &
 python3 relay/iterm_warden.py      --home <project-dir>/.relay &
 python3 relay/iterm_reaper.py      --home <project-dir>/.relay &
+python3 relay/iterm_courier.py     --home <project-dir>/.relay &
 python3 relay/iterm_decorate.py    --home <project-dir>/.relay   # optional: badge + colour
 ```
 
@@ -275,7 +287,7 @@ whoever still has pending mail. The swarm continues from exactly where it stoppe
 
 ### Troubleshooting: mail not being delivered
 
-The dispatcher and the four observer triggers each decide "is this window idle or
+The dispatcher and the five observer triggers each decide "is this window idle or
 busy" by matching known substrings in the tail of the session's visible text
 (`"esc to interrupt"` = busy; `"for agents"` / `"? for shortcuts"` /
 `"shift+tab to cycle"` = idle; anything unrecognized defaults to busy, since waking a
@@ -287,8 +299,8 @@ logs nothing wrong, so this fails silently.
 If mail sits undelivered with no wake attempts logged for a role that's actually
 idle, this is the first thing to check: capture that session's `contents` (see
 `session_contents()` in `iterm_dispatch.py`, `iterm_sentinel.py`, `iterm_qa.py`,
-`iterm_warden.py`, or `iterm_reaper.py`) and add whatever its current idle footer
-contains to the `is_busy()` match list — in **all five** files.
+`iterm_warden.py`, `iterm_reaper.py`, or `iterm_courier.py`) and add whatever its
+current idle footer contains to the `is_busy()` match list — in **all six** files.
 
 ### The observers, mechanically
 
@@ -302,6 +314,11 @@ contains to the `is_busy()` match list — in **all five** files.
   testing on the changed production code, scoped to that diff — pulled out of the
   Builder's own loop because it's slow, so it runs out-of-band instead of blocking
   every TDD cycle.
+- **Courier** (`iterm_courier.py`, every 300s — the fastest cadence, by design) wakes
+  on new commits and re-runs the whole accumulated acceptance/BDD suite, reporting
+  pass/fail back to the Builder — pulled out because re-running the whole suite
+  inline got slower as it grew; runs out-of-band so the Builder never blocks on it,
+  trading a bit of risk (a regression surfaces after the fact) for speed of feedback.
 
 Two more tools watch but never speak: **Communication Drawer**
 (`python3 relay/draw.py --home <project-dir>/.relay`) renders the ledger as a

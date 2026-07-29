@@ -56,11 +56,25 @@ tests is your job** (the Examiner authors the scenarios but writes no code):
   the system, which would fake a pass.
 - **Stand up the project's BDD runner** (Cucumber, behave, SpecFlow/Reqnroll, …) if the
   project has none yet — that setup is part of the work, not optional.
-- **Drive production code with TDD until every scenario passes**, then run the whole
-  acceptance suite and confirm it is green against the running system.
-- **A green run of those acceptance scenarios is your strongest `evidence`** — the
+- **Drive production code with TDD until the scenario(s) for this expectation pass**,
+  then run **those** scenarios against the running system.
+- **A green run of the scenario(s) you just wired is your strongest `evidence`** — the
   system actually doing the thing, end to end. Commit the step-definitions and runner
   config alongside the production code so the suite stays runnable in the repo and CI.
+
+## Re-running the whole acceptance suite is not (only) yours
+You still wire every new scenario and demonstrate **it** running green — that doesn't
+change. But re-running the **entire accumulated** acceptance suite on every commit
+gets slower as it grows, and doing that inline blocked you on every single change.
+It's the **Courier's** job: an observer outside the chain, on its own fast cadence
+(faster than the Reaper's, since quick turnaround is the whole point), checking the
+whole suite out-of-band and reporting back over `courier>builder`. You may commit and
+send evidence for your new scenario without first re-running the whole historical
+suite yourself — a bit more risk (a regression elsewhere lands before the Courier
+catches it), traded for never blocking on the full suite. Treat a `warning` naming a
+regressed scenario as a real defect: fix it promptly (a new failing test first, per
+your own TDD discipline) the same way you'd treat one you found yourself. You never
+reply to the Courier.
 
 ## Design & modularity (you own the *how*)
 The Examiner owns *what* must hold; how you structure the code is yours — so make it a
