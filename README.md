@@ -209,8 +209,8 @@ Reaper/Courier's one-way messages, travel through
 
 ```
 relay/swarm-up.sh   <swarm-name> <project-dir>   # open all 9 windows + start all 7 daemons, detached
-relay/swarm-down.sh <swarm-name> <project-dir>   # stop the daemons and close the windows
-relay/swarm-down.sh <swarm-name> <project-dir> --keep-windows   # stop daemons only, leave windows open
+relay/swarm-down.sh <swarm-name> <project-dir>   # stop the daemons, close the windows, sweep leftover node processes
+relay/swarm-down.sh <swarm-name> <project-dir> --keep-windows   # stop daemons only, leave windows open (still sweeps node processes)
 ```
 
 `swarm-up.sh` is idempotent — it tears down any existing windows/daemons for that
@@ -235,6 +235,7 @@ relay/
   swarm-up.sh / swarm-down.sh   one-shot launch/teardown (see Quick start)
   iterm_launch.py          open the swarm as separate, tiled iTerm windows
   iterm_close.py           close a swarm's windows cleanly (used by swarm-down.sh)
+  kill_project_node.py     sweep leftover 'node' processes rooted in the project dir (used by swarm-down.sh)
   iterm_dispatch.py        push dispatcher — wakes a window when it has mail
   dispatch_watchdog.py     restarts the dispatcher if it dies
   iterm_sentinel.py / iterm_qa.py / iterm_warden.py / iterm_reaper.py / iterm_courier.py   wake triggers for the five observers

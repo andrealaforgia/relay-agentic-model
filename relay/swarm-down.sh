@@ -35,4 +35,11 @@ elif [ -d "$RELAY_HOME" ]; then
 fi
 
 echo
+echo "== sweeping leftover node processes under $PROJECT_DIR =="
+# Closing a window kills whatever's attached to its tty, but an agent may have
+# started a test process (or a server kept alive for acceptance tests) detached
+# from that tty — this catches those orphans by cwd, not by window.
+python3 "$TOOL_DIR/kill_project_node.py" --project-dir "$PROJECT_DIR"
+
+echo
 echo "swarm '$SWARM_NAME' is down: $PROJECT_DIR"
