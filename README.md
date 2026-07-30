@@ -233,7 +233,7 @@ relay/
   agents/<role>.md         the playbook each session adopts
 
   swarm-up.sh / swarm-down.sh   one-shot launch/teardown (see Quick start)
-  iterm_launch.py          open the swarm as separate, tiled iTerm windows
+  iterm_launch.py          open the swarm as separate, tiled iTerm windows (cascades at full width on a screen too narrow to tile — see below)
   iterm_close.py           close a swarm's windows cleanly (used by swarm-down.sh)
   kill_project_node.py     sweep leftover 'node' processes rooted in the project dir (used by swarm-down.sh)
   iterm_dispatch.py        push dispatcher — wakes a window when it has mail
@@ -296,6 +296,13 @@ genuinely busy session mid-generation is worse than a missed wake). If a Claude 
 UI update changes that footer text, a window can look permanently "busy" to every
 watcher and its mail silently never gets delivered — the daemon keeps running and
 logs nothing wrong, so this fails silently.
+
+The same footer disappears below a certain terminal width — Claude Code stops
+rendering it in a narrow window. On a screen too small to tile every role's window
+above `MIN_WINDOW_WIDTH` (default 480px, tune via env), `iterm_launch.py` cascades
+every window at full screen width instead of shrinking them, precisely so this
+doesn't happen. If you still see a permanently "busy" window on a small screen,
+widen it manually or raise/lower `MIN_WINDOW_WIDTH` to match your display.
 
 If mail sits undelivered with no wake attempts logged for a role that's actually
 idle, this is the first thing to check: capture that session's `contents` (see

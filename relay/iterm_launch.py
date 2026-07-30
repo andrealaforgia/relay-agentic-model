@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """Launch one EDD swarm as separate, visible iTerm2 windows (no tmux).
 
-Opens one iTerm window per role, tiled across the screen so you can watch them
-all at once, each running `claude` in the project dir primed with its playbook.
-Records role -> iTerm session UUID in <RELAY_HOME>/iterm/windows.json so the
-companion dispatcher (iterm_dispatch.py) can wake the right session (UUIDs are
-stable; window ids get recycled when a window closes and would misdeliver a wake).
-Each window is also given a role badge + colour (via iterm_decorate.py).
+Opens one iTerm window per role, tiled side by side across the screen so you can
+watch them all at once, each running `claude` in the project dir primed with its
+playbook. On a screen too narrow to tile every window above MIN_WINDOW_WIDTH, it
+falls back to cascading windows at FULL screen width instead — a window narrow
+enough to clip Claude Code's own status footer looks permanently "busy" to
+iterm_dispatch.py's idle/busy detection, silently wedging the whole swarm, so a
+readable (if overlapping) window is the safer default. Records role -> iTerm
+session UUID in <RELAY_HOME>/iterm/windows.json so the companion dispatcher
+(iterm_dispatch.py) can wake the right session (UUIDs are stable; window ids get
+recycled when a window closes and would misdeliver a wake). Each window is also
+given a role badge + colour (via iterm_decorate.py).
 
   python3 relay/iterm_launch.py <swarm-name> <project-dir>
 
 Env:
-  CLAUDE_CMD   command to run in each window (default: claude --dangerously-skip-permissions)
-  START_DELAY  seconds to let claude boot before sending the kickoff (default: 12)
+  CLAUDE_CMD        command to run in each window (default: claude --dangerously-skip-permissions)
+  START_DELAY       seconds to let claude boot before sending the kickoff (default: 12)
+  MIN_WINDOW_WIDTH  px below which tiling gives way to full-width cascading (default: 480)
 """
 import json
 import os
@@ -32,6 +38,14 @@ ROLES = ["interpreter", "analyst", "examiner", "builder", "qa", "warden", "reape
 CLAUDE_CMD = os.environ.get("CLAUDE_CMD", "claude --dangerously-skip-permissions")
 START_DELAY = float(os.environ.get("START_DELAY", "12"))
 MENUBAR = 38  # top offset so windows clear the menu bar
+
+# Below this width, Claude Code's own TUI stops rendering its bottom status line
+# ("for agents" / "? for shortcuts" / "shift+tab to cycle") — exactly the text
+# iterm_dispatch.py and the observer triggers scan for to tell idle from busy. A
+# window narrower than this looks permanently "busy" to every watcher and its mail
+# silently never gets delivered, wedging the whole swarm. Tune via env if needed.
+MIN_WINDOW_WIDTH = int(os.environ.get("MIN_WINDOW_WIDTH", "480"))
+CASCADE_STEP = 28  # px offset per window when cascading, so title bars stay clickable
 
 # Per-role model: everyone runs on Sonnet except the two hardest-reasoning roles —
 # the Interpreter (human-facing planning) and the Sentinel (audits the whole ledger),
@@ -57,6 +71,26 @@ def desktop_width_height():
     # "0, 0, 5120, 1440"
     nums = [int(x.strip()) for x in out.split(",")]
     return nums[2], nums[3]
+
+
+def window_bounds(n: int, sw: int, sh_: int):
+    """One bounds tuple per role. Tiles side by side edge-to-edge when the screen
+    is wide enough for every window to stay above MIN_WINDOW_WIDTH; otherwise
+    every window gets the FULL screen width (so Claude Code's status footer never
+    gets clipped) and they cascade downward instead, overlapping — a working,
+    readable window beats a wedged swarm."""
+    col_w = sw // n
+    if col_w >= MIN_WINDOW_WIDTH:
+        bounds = []
+        for i in range(n):
+            x1 = i * col_w
+            x2 = sw if i == n - 1 else (i + 1) * col_w
+            bounds.append((x1, MENUBAR, x2, sh_))
+        return bounds, False
+
+    print(f"screen too narrow to tile {n} windows at >= {MIN_WINDOW_WIDTH}px each "
+          f"({sw}px / {n} = {col_w}px/window) — cascading at full width instead")
+    return [(0, MENUBAR + i * CASCADE_STEP, sw, sh_) for i in range(n)], True
 
 
 def create_window(name: str, start_cmd: str, bounds) -> str:
@@ -143,18 +177,15 @@ def main():
         )
         sh.chmod(0o755)
 
-    # Tile: one row of N windows across the full screen width.
+    # Tile side by side if the screen is wide enough; cascade at full width otherwise.
     sw, sh_ = desktop_width_height()
     n = len(ROLES)
-    col_w = sw // n
+    bounds_list, cascaded = window_bounds(n, sw, sh_)
     win_ids = {}
-    for i, r in enumerate(ROLES):
-        x1 = i * col_w
-        x2 = sw if i == n - 1 else (i + 1) * col_w
-        bounds = (x1, MENUBAR, x2, sh_)
+    for r, bounds in zip(ROLES, bounds_list):
         wid = create_window(r, f"bash '{iterm_dir / (r + '.sh')}'", bounds)
         win_ids[r] = wid
-        print(f"window {r}: id {wid}  bounds {bounds}")
+        print(f"window {r}: id {wid}  bounds {bounds}" + ("  (cascaded)" if cascaded else ""))
 
     (iterm_dir / "windows.json").write_text(json.dumps(win_ids, indent=2))
 
