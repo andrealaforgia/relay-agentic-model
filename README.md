@@ -208,7 +208,7 @@ Reaper/Courier's one-way messages, travel through
 ### Quick start
 
 ```
-relay/swarm-up.sh   <swarm-name> <project-dir>   # open all 9 windows + start all 7 daemons, detached
+relay/swarm-up.sh   <swarm-name> <project-dir>   # open all 9 windows + start all 8 daemons, detached
 relay/swarm-down.sh <swarm-name> <project-dir>   # stop the daemons, close the windows, sweep leftover node processes
 relay/swarm-down.sh <swarm-name> <project-dir> --keep-windows   # stop daemons only, leave windows open (still sweeps node processes)
 ```
@@ -239,6 +239,7 @@ relay/
   iterm_dispatch.py        push dispatcher — wakes a window when it has mail
   dispatch_watchdog.py     restarts the dispatcher if it dies
   iterm_sentinel.py / iterm_qa.py / iterm_warden.py / iterm_reaper.py / iterm_courier.py   wake triggers for the five observers
+  iterm_progress.py        periodic (~5min) progress heartbeat for the Interpreter — see below
   iterm_decorate.py        role badge + background colour per window (edit PALETTE to change)
   draw.py                  render the ledger as a swimlane comms board
   iterm_docwatch.py        optional: wakes a Documenter from git history
@@ -258,6 +259,7 @@ python3 relay/iterm_qa.py          --home <project-dir>/.relay &
 python3 relay/iterm_warden.py      --home <project-dir>/.relay &
 python3 relay/iterm_reaper.py      --home <project-dir>/.relay &
 python3 relay/iterm_courier.py     --home <project-dir>/.relay &
+python3 relay/iterm_progress.py    --home <project-dir>/.relay &
 python3 relay/iterm_decorate.py    --home <project-dir>/.relay   # optional: badge + colour
 ```
 
@@ -307,8 +309,9 @@ widen it manually or raise/lower `MIN_WINDOW_WIDTH` to match your display.
 If mail sits undelivered with no wake attempts logged for a role that's actually
 idle, this is the first thing to check: capture that session's `contents` (see
 `session_contents()` in `iterm_dispatch.py`, `iterm_sentinel.py`, `iterm_qa.py`,
-`iterm_warden.py`, `iterm_reaper.py`, or `iterm_courier.py`) and add whatever its
-current idle footer contains to the `is_busy()` match list — in **all six** files.
+`iterm_warden.py`, `iterm_reaper.py`, `iterm_courier.py`, or `iterm_progress.py`)
+and add whatever its current idle footer contains to the `is_busy()` match list —
+in **all seven** files.
 
 ### The observers, mechanically
 
@@ -327,6 +330,19 @@ current idle footer contains to the `is_busy()` match list — in **all six** fi
   pass/fail back to the Builder — pulled out because re-running the whole suite
   inline got slower as it grew; runs out-of-band so the Builder never blocks on it,
   trading a bit of risk (a regression surfaces after the fact) for speed of feedback.
+
+### The Interpreter's progress heartbeat
+
+Unlike the five observers above, `iterm_progress.py` doesn't watch the Builder's
+code — it wakes the **Interpreter** itself, every ~300s, unconditionally (not
+gated on new commits, since it's a heartbeat rather than a "did something change"
+check). Each wake, the Interpreter reads the checklist it maintains at
+`<RELAY_HOME>/interpreter/roadmap.md` (every iteration and behaviour it agreed with
+the Owner, `[x]`'d off as `behaviour-status` confirms each one), computes % done
+from it, and reports that to the Owner as a `progress` message — concise, no
+decision required. This runs whether or not the Owner or Analyst happen to have
+sent anything, so project state stays visible on a steady cadence rather than only
+when a milestone lands.
 
 Two more tools watch but never speak: **Communication Drawer**
 (`python3 relay/draw.py --home <project-dir>/.relay`) renders the ledger as a
